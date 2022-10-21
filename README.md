@@ -1,2 +1,2 @@
-# cerberus-client-go
+# go-cerberus
 cerberus go client library
