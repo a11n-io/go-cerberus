@@ -2,7 +2,6 @@ package go_cerberus
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -61,12 +60,13 @@ func (c *client) GetToken(ctx context.Context) (string, error) {
 
 func (c *client) sendRequest(req *http.Request, v interface{}) error {
 
-	authStr := c.apiKey + ":" + c.apiSecret
-	auth := base64.StdEncoding.EncodeToString([]byte(authStr))
+	//authStr := c.apiKey + ":" + c.apiSecret
+	//auth := base64.StdEncoding.EncodeToString([]byte(authStr))
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/json; charset=utf-8")
-	req.Header.Set("Authorization", fmt.Sprintf("Basic %s", auth))
+	//req.Header.Set("Authorization", fmt.Sprintf("Basic %s", auth))
+	req.SetBasicAuth(c.apiKey, c.apiSecret)
 
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
