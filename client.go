@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 )
@@ -66,6 +67,9 @@ func (c *client) sendRequest(req *http.Request, v interface{}) error {
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/json; charset=utf-8")
 	//req.Header.Set("Authorization", fmt.Sprintf("Basic %s", auth))
+
+	log.Println("SetBasicAuth", c.apiKey, c.apiSecret)
+
 	req.SetBasicAuth(c.apiKey, c.apiSecret)
 
 	res, err := c.HTTPClient.Do(req)
