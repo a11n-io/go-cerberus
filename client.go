@@ -44,7 +44,7 @@ func NewClient(baseUrl, apiKey, apiSecret string) Client {
 
 func (c *client) GetToken(ctx context.Context) (string, error) {
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/token", c.baseURL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/auth/token", c.baseURL), nil)
 	if err != nil {
 		return "", err
 	}
