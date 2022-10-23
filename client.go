@@ -1,14 +1,29 @@
 package go_cerberus
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 )
+
+type User struct {
+	Id          string `json:"id"`
+	DisplayName string `json:"displayName"`
+	UserName    string `json:"userName"`
+}
+
+type Role struct {
+	Id       string `json:"id"`
+	RoleName string `json:"roleName"`
+}
+
+type Resource struct {
+	Id string `json:"id"`
+}
 
 type errorResponse struct {
 	Code    int    `json:"code"`
@@ -18,6 +33,22 @@ type errorResponse struct {
 type successResponse struct {
 	Code int         `json:"code"`
 	Data interface{} `json:"data"`
+}
+
+type resourceData struct {
+	ResourceId     string `json:"resourceId"`
+	ResourceTypeId string `json:"resourceTypeId"`
+}
+
+type userData struct {
+	UserId      string `json:"userId"`
+	UserName    string `json:"userName"`
+	DisplayName string `json:"displayName"`
+}
+
+type roleData struct {
+	RoleId   string `json:"roleId"`
+	RoleName string `json:"roleName"`
 }
 
 type Client interface {
@@ -51,6 +82,8 @@ func (c *client) GetToken(ctx context.Context) (string, error) {
 
 	req = req.WithContext(ctx)
 
+	req.SetBasicAuth(c.apiKey, c.apiSecret)
+
 	var token string
 	if err := c.sendRequest(req, &token); err != nil {
 		return "", err
@@ -59,18 +92,127 @@ func (c *client) GetToken(ctx context.Context) (string, error) {
 	return token, nil
 }
 
-func (c *client) sendRequest(req *http.Request, v interface{}) error {
+func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceTypeId string) (Resource, error) {
 
-	//authStr := c.apiKey + ":" + c.apiSecret
-	//auth := base64.StdEncoding.EncodeToString([]byte(authStr))
+	body := &resourceData{
+		ResourceId:     resourceId,
+		ResourceTypeId: resourceTypeId,
+	}
+
+	payloadBuf := new(bytes.Buffer)
+	err := json.NewEncoder(payloadBuf).Encode(body)
+	if err != nil {
+		return Resource{}, err
+	}
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/accounts/%s/resources", c.baseURL, accountId),
+		payloadBuf)
+	if err != nil {
+		return Resource{}, err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+
+	var resource Resource
+	if err := c.sendRequest(req, &resource); err != nil {
+		return Resource{}, err
+	}
+
+	return resource, nil
+}
+
+func (c *client) CreateUser(ctx context.Context, jwtToken, accountId, userId, userName, displayName string) (User, error) {
+
+	body := &userData{
+		UserId:      userId,
+		UserName:    userName,
+		DisplayName: displayName,
+	}
+
+	payloadBuf := new(bytes.Buffer)
+	err := json.NewEncoder(payloadBuf).Encode(body)
+	if err != nil {
+		return User{}, err
+	}
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/accounts/%s/users", c.baseURL, accountId),
+		payloadBuf)
+	if err != nil {
+		return User{}, err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+
+	var user User
+	if err := c.sendRequest(req, &user); err != nil {
+		return User{}, err
+	}
+
+	return user, nil
+}
+
+func (c *client) CreateRole(ctx context.Context, jwtToken, accountId, roleId, roleName string) (Role, error) {
+
+	body := &roleData{
+		RoleId:   roleId,
+		RoleName: roleName,
+	}
+
+	payloadBuf := new(bytes.Buffer)
+	err := json.NewEncoder(payloadBuf).Encode(body)
+	if err != nil {
+		return Role{}, err
+	}
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/accounts/%s/roles", c.baseURL, accountId),
+		payloadBuf)
+	if err != nil {
+		return Role{}, err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+
+	var role Role
+	if err := c.sendRequest(req, &role); err != nil {
+		return Role{}, err
+	}
+
+	return role, nil
+}
+
+func (c *client) AssignRole(ctx context.Context, jwtToken, accountId, roleId, userId string) error {
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/accounts/%s/roles/%s/users/%s", c.baseURL, accountId, roleId, userId), nil)
+	if err != nil {
+		return err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+
+	if err := c.sendRequest(req, nil); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *client) sendRequest(req *http.Request, v interface{}) error {
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/json; charset=utf-8")
-	//req.Header.Set("Authorization", fmt.Sprintf("Basic %s", auth))
-
-	log.Println("SetBasicAuth", c.apiKey, c.apiSecret)
-
-	req.SetBasicAuth(c.apiKey, c.apiSecret)
 
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
@@ -88,11 +230,13 @@ func (c *client) sendRequest(req *http.Request, v interface{}) error {
 		return fmt.Errorf("unknown error, status code: %d", res.StatusCode)
 	}
 
-	fullResponse := successResponse{
-		Data: v,
-	}
-	if err = json.NewDecoder(res.Body).Decode(&fullResponse); err != nil {
-		return err
+	if v != nil {
+		fullResponse := successResponse{
+			Data: v,
+		}
+		if err = json.NewDecoder(res.Body).Decode(&fullResponse); err != nil {
+			return err
+		}
 	}
 
 	return nil
