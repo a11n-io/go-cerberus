@@ -61,6 +61,7 @@ type permissionData struct {
 
 type Client interface {
 	GetToken(ctx context.Context) (string, error)
+	HasAccess(ctx context.Context, jwtToken, accountId, userId, resourceId, action string) (bool, error)
 	CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceType string) (Resource, error)
 	CreateUser(ctx context.Context, jwtToken, accountId, userId, userName, displayName string) (User, error)
 	CreateRole(ctx context.Context, jwtToken, accountId, roleId, roleName string) (Role, error)
@@ -103,6 +104,27 @@ func (c *client) GetToken(ctx context.Context) (string, error) {
 	}
 
 	return token, nil
+}
+
+func (c *client) HasAccess(ctx context.Context, jwtToken, accountId, userId, resourceId, action string) (bool, error) {
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/accounts/%s/access/permitteeid/%s/resourceid/%s/actionname/%s", c.baseURL, accountId, userId, resourceId, action), nil)
+	if err != nil {
+		return false, err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+
+	var hasAccess bool
+	if err := c.sendRequest(req, &hasAccess); err != nil {
+		return false, err
+	}
+
+	return hasAccess, nil
 }
 
 func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceType string) (Resource, error) {
