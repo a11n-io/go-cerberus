@@ -36,8 +36,9 @@ type successResponse struct {
 }
 
 type resourceData struct {
-	ResourceId     string `json:"resourceId"`
-	ResourceTypeId string `json:"resourceTypeId"`
+	ResourceId       string `json:"resourceId"`
+	ResourceTypeId   string `json:"resourceTypeId"`
+	ResourceTypeName string `json:"resourceTypeName"`
 }
 
 type userData struct {
@@ -51,12 +52,20 @@ type roleData struct {
 	RoleName string `json:"roleName"`
 }
 
+type permissionData struct {
+	PermitteeId string   `json:"permitteeId"`
+	ResourceId  string   `json:"resourceId"`
+	PolicyIds   []string `json:"policyIds"`
+	PolicyNames []string `json:"policyNames"`
+}
+
 type Client interface {
 	GetToken(ctx context.Context) (string, error)
-	CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceTypeId string) (Resource, error)
+	CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceType string) (Resource, error)
 	CreateUser(ctx context.Context, jwtToken, accountId, userId, userName, displayName string) (User, error)
 	CreateRole(ctx context.Context, jwtToken, accountId, roleId, roleName string) (Role, error)
 	AssignRole(ctx context.Context, jwtToken, accountId, roleId, userId string) error
+	CreatePermission(ctx context.Context, jwtToken, accountId, permitteeId, resourceId string, policies []string) error
 }
 
 type client struct {
@@ -96,11 +105,11 @@ func (c *client) GetToken(ctx context.Context) (string, error) {
 	return token, nil
 }
 
-func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceTypeId string) (Resource, error) {
+func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceType string) (Resource, error) {
 
 	body := &resourceData{
-		ResourceId:     resourceId,
-		ResourceTypeId: resourceTypeId,
+		ResourceId:       resourceId,
+		ResourceTypeName: resourceType,
 	}
 
 	payloadBuf := new(bytes.Buffer)
@@ -198,6 +207,38 @@ func (c *client) AssignRole(ctx context.Context, jwtToken, accountId, roleId, us
 	req, err := http.NewRequest(
 		"POST",
 		fmt.Sprintf("%s/accounts/%s/roles/%s/users/%s", c.baseURL, accountId, roleId, userId), nil)
+	if err != nil {
+		return err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+
+	if err := c.sendRequest(req, nil); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *client) CreatePermission(ctx context.Context, jwtToken, accountId, permitteeId, resourceId string, policies []string) error {
+
+	body := &permissionData{
+		PermitteeId: permitteeId,
+		ResourceId:  resourceId,
+		PolicyNames: policies,
+	}
+
+	payloadBuf := new(bytes.Buffer)
+	err := json.NewEncoder(payloadBuf).Encode(body)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/accounts/%s/permissions", c.baseURL, accountId),
+		payloadBuf)
 	if err != nil {
 		return err
 	}
