@@ -53,6 +53,10 @@ type roleData struct {
 
 type Client interface {
 	GetToken(ctx context.Context) (string, error)
+	CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceTypeId string) (Resource, error)
+	CreateUser(ctx context.Context, jwtToken, accountId, userId, userName, displayName string) (User, error)
+	CreateRole(ctx context.Context, jwtToken, accountId, roleId, roleName string) (Role, error)
+	AssignRole(ctx context.Context, jwtToken, accountId, roleId, userId string) error
 }
 
 type client struct {
