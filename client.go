@@ -119,12 +119,11 @@ func (c *client) HasAccess(ctx context.Context, jwtToken, accountId, userId, res
 
 	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
 
-	var hasAccess bool
-	if err := c.sendRequest(req, &hasAccess); err != nil {
+	if err := c.sendRequest(req, nil); err != nil {
 		return false, err
 	}
 
-	return hasAccess, nil
+	return true, nil
 }
 
 func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceType string) (Resource, error) {
