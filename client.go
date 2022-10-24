@@ -21,6 +21,10 @@ type Role struct {
 	RoleName string `json:"roleName"`
 }
 
+type Account struct {
+	Id string `json:"id"`
+}
+
 type Resource struct {
 	Id string `json:"id"`
 }
@@ -33,6 +37,10 @@ type errorResponse struct {
 type successResponse struct {
 	Code int         `json:"code"`
 	Data interface{} `json:"data"`
+}
+
+type accountData struct {
+	AccountId string `json:"accountId"`
 }
 
 type resourceData struct {
@@ -62,6 +70,7 @@ type permissionData struct {
 type Client interface {
 	GetToken(ctx context.Context) (string, error)
 	HasAccess(ctx context.Context, jwtToken, accountId, userId, resourceId, action string) (bool, error)
+	CreateAccount(ctx context.Context, jwtToken, accountId string) (Account, error)
 	CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceType string) (Resource, error)
 	CreateUser(ctx context.Context, jwtToken, accountId, userId, userName, displayName string) (User, error)
 	CreateRole(ctx context.Context, jwtToken, accountId, roleId, roleName string) (Role, error)
@@ -124,6 +133,37 @@ func (c *client) HasAccess(ctx context.Context, jwtToken, accountId, userId, res
 	}
 
 	return true, nil
+}
+
+func (c *client) CreateAccount(ctx context.Context, jwtToken, accountId string) (Account, error) {
+
+	body := &accountData{
+		AccountId: accountId,
+	}
+
+	payloadBuf := new(bytes.Buffer)
+	err := json.NewEncoder(payloadBuf).Encode(body)
+	if err != nil {
+		return Account{}, err
+	}
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/accounts", c.baseURL),
+		payloadBuf)
+	if err != nil {
+		return Account{}, err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+
+	var account Account
+	if err := c.sendRequest(req, &account); err != nil {
+		return Account{}, err
+	}
+
+	return account, nil
 }
 
 func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceType string) (Resource, error) {
