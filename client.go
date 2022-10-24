@@ -119,7 +119,7 @@ func (c *client) HasAccess(ctx context.Context, jwtToken, accountId, userId, res
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/accounts/%s/access/permitteeid/%s/resourceid/%s/actionname/%s", c.baseURL, accountId, userId, resourceId, action), nil)
+		fmt.Sprintf("%s/api/accounts/%s/access/permitteeid/%s/resourceid/%s/actionname/%s", c.baseURL, accountId, userId, resourceId, action), nil)
 	if err != nil {
 		return false, err
 	}
@@ -148,7 +148,7 @@ func (c *client) CreateAccount(ctx context.Context, jwtToken, accountId string) 
 	}
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/accounts", c.baseURL),
+		fmt.Sprintf("%s/api/accounts", c.baseURL),
 		payloadBuf)
 	if err != nil {
 		return Account{}, err
@@ -180,7 +180,7 @@ func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resour
 	}
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/accounts/%s/resources", c.baseURL, accountId),
+		fmt.Sprintf("%s/api/accounts/%s/resources", c.baseURL, accountId),
 		payloadBuf)
 	if err != nil {
 		return Resource{}, err
@@ -213,7 +213,7 @@ func (c *client) CreateUser(ctx context.Context, jwtToken, accountId, userId, us
 	}
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/accounts/%s/users", c.baseURL, accountId),
+		fmt.Sprintf("%s/api/accounts/%s/users", c.baseURL, accountId),
 		payloadBuf)
 	if err != nil {
 		return User{}, err
@@ -245,7 +245,7 @@ func (c *client) CreateRole(ctx context.Context, jwtToken, accountId, roleId, ro
 	}
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/accounts/%s/roles", c.baseURL, accountId),
+		fmt.Sprintf("%s/api/accounts/%s/roles", c.baseURL, accountId),
 		payloadBuf)
 	if err != nil {
 		return Role{}, err
@@ -267,7 +267,7 @@ func (c *client) AssignRole(ctx context.Context, jwtToken, accountId, roleId, us
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/accounts/%s/roles/%s/users/%s", c.baseURL, accountId, roleId, userId), nil)
+		fmt.Sprintf("%s/api/accounts/%s/roles/%s/users/%s", c.baseURL, accountId, roleId, userId), nil)
 	if err != nil {
 		return err
 	}
@@ -298,7 +298,7 @@ func (c *client) CreatePermission(ctx context.Context, jwtToken, accountId, perm
 	}
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/accounts/%s/permissions", c.baseURL, accountId),
+		fmt.Sprintf("%s/api/accounts/%s/permissions", c.baseURL, accountId),
 		payloadBuf)
 	if err != nil {
 		return err
