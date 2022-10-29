@@ -126,7 +126,7 @@ func (c *client) HasAccess(ctx context.Context, jwtToken, accountId, userId, res
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken)
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return false, err
@@ -156,7 +156,7 @@ func (c *client) CreateAccount(ctx context.Context, jwtToken, accountId string) 
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken)
 
 	var account Account
 	if err := c.sendRequest(req, &account); err != nil {
@@ -188,7 +188,7 @@ func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resour
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken)
 
 	var resource Resource
 	if err := c.sendRequest(req, &resource); err != nil {
@@ -221,7 +221,7 @@ func (c *client) CreateUser(ctx context.Context, jwtToken, accountId, userId, us
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken)
 
 	var user User
 	if err := c.sendRequest(req, &user); err != nil {
@@ -253,7 +253,7 @@ func (c *client) CreateRole(ctx context.Context, jwtToken, accountId, roleId, ro
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken)
 
 	var role Role
 	if err := c.sendRequest(req, &role); err != nil {
@@ -274,7 +274,7 @@ func (c *client) AssignRole(ctx context.Context, jwtToken, accountId, roleId, us
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken)
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return err
@@ -306,7 +306,7 @@ func (c *client) CreatePermission(ctx context.Context, jwtToken, accountId, perm
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("CerberusAuthorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken)
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return err
