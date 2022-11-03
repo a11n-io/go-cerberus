@@ -26,7 +26,8 @@ type Account struct {
 }
 
 type Resource struct {
-	Id string `json:"id"`
+	Id       string `json:"id"`
+	ParentId string `json:"parentId"`
 }
 
 type errorResponse struct {
@@ -45,6 +46,7 @@ type accountData struct {
 
 type resourceData struct {
 	ResourceId       string `json:"resourceId"`
+	ParentId         string `json:"parentId"`
 	ResourceTypeId   string `json:"resourceTypeId"`
 	ResourceTypeName string `json:"resourceTypeName"`
 }
@@ -71,7 +73,7 @@ type Client interface {
 	GetToken(ctx context.Context) (string, error)
 	HasAccess(ctx context.Context, jwtToken, accountId, userId, resourceId, action string) (bool, error)
 	CreateAccount(ctx context.Context, jwtToken, accountId string) (Account, error)
-	CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceType string) (Resource, error)
+	CreateResource(ctx context.Context, jwtToken, accountId, resourceId, parentId, resourceType string) (Resource, error)
 	CreateUser(ctx context.Context, jwtToken, accountId, userId, userName, displayName string) (User, error)
 	CreateRole(ctx context.Context, jwtToken, accountId, roleId, roleName string) (Role, error)
 	AssignRole(ctx context.Context, jwtToken, accountId, roleId, userId string) error
@@ -166,10 +168,11 @@ func (c *client) CreateAccount(ctx context.Context, jwtToken, accountId string) 
 	return account, nil
 }
 
-func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resourceId, resourceType string) (Resource, error) {
+func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resourceId, parentId, resourceType string) (Resource, error) {
 
 	body := &resourceData{
 		ResourceId:       resourceId,
+		ParentId:         parentId,
 		ResourceTypeName: resourceType,
 	}
 
