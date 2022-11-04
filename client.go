@@ -71,13 +71,13 @@ type permissionData struct {
 
 type Client interface {
 	GetToken(ctx context.Context) (string, error)
-	HasAccess(ctx context.Context, jwtToken, accountId, userId, resourceId, action string) (bool, error)
-	CreateAccount(ctx context.Context, jwtToken, accountId string) (Account, error)
-	CreateResource(ctx context.Context, jwtToken, accountId, resourceId, parentId, resourceType string) (Resource, error)
-	CreateUser(ctx context.Context, jwtToken, accountId, userId, userName, displayName string) (User, error)
-	CreateRole(ctx context.Context, jwtToken, accountId, roleId, roleName string) (Role, error)
-	AssignRole(ctx context.Context, jwtToken, accountId, roleId, userId string) error
-	CreatePermission(ctx context.Context, jwtToken, accountId, permitteeId, resourceId string, policies []string) error
+	HasAccess(ctx context.Context, accountId, userId, resourceId, action string) (bool, error)
+	CreateAccount(ctx context.Context, accountId string) (Account, error)
+	CreateResource(ctx context.Context, accountId, resourceId, parentId, resourceType string) (Resource, error)
+	CreateUser(ctx context.Context, accountId, userId, userName, displayName string) (User, error)
+	CreateRole(ctx context.Context, accountId, roleId, roleName string) (Role, error)
+	AssignRole(ctx context.Context, accountId, roleId, userId string) error
+	CreatePermission(ctx context.Context, accountId, permitteeId, resourceId string, policies []string) error
 }
 
 type client struct {
@@ -117,7 +117,12 @@ func (c *client) GetToken(ctx context.Context) (string, error) {
 	return token, nil
 }
 
-func (c *client) HasAccess(ctx context.Context, jwtToken, accountId, userId, resourceId, action string) (bool, error) {
+func (c *client) HasAccess(ctx context.Context, accountId, userId, resourceId, action string) (bool, error) {
+
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return false, fmt.Errorf("no token")
+	}
 
 	req, err := http.NewRequest(
 		"POST",
@@ -128,7 +133,7 @@ func (c *client) HasAccess(ctx context.Context, jwtToken, accountId, userId, res
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return false, err
@@ -137,7 +142,12 @@ func (c *client) HasAccess(ctx context.Context, jwtToken, accountId, userId, res
 	return true, nil
 }
 
-func (c *client) CreateAccount(ctx context.Context, jwtToken, accountId string) (Account, error) {
+func (c *client) CreateAccount(ctx context.Context, accountId string) (Account, error) {
+
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return Account{}, fmt.Errorf("no token")
+	}
 
 	body := &accountData{
 		AccountId: accountId,
@@ -158,7 +168,7 @@ func (c *client) CreateAccount(ctx context.Context, jwtToken, accountId string) 
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
 
 	var account Account
 	if err := c.sendRequest(req, &account); err != nil {
@@ -168,7 +178,12 @@ func (c *client) CreateAccount(ctx context.Context, jwtToken, accountId string) 
 	return account, nil
 }
 
-func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resourceId, parentId, resourceType string) (Resource, error) {
+func (c *client) CreateResource(ctx context.Context, accountId, resourceId, parentId, resourceType string) (Resource, error) {
+
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return Resource{}, fmt.Errorf("no token")
+	}
 
 	body := &resourceData{
 		ResourceId:       resourceId,
@@ -191,7 +206,7 @@ func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resour
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
 
 	var resource Resource
 	if err := c.sendRequest(req, &resource); err != nil {
@@ -201,7 +216,12 @@ func (c *client) CreateResource(ctx context.Context, jwtToken, accountId, resour
 	return resource, nil
 }
 
-func (c *client) CreateUser(ctx context.Context, jwtToken, accountId, userId, userName, displayName string) (User, error) {
+func (c *client) CreateUser(ctx context.Context, accountId, userId, userName, displayName string) (User, error) {
+
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return User{}, fmt.Errorf("no token")
+	}
 
 	body := &userData{
 		UserId:      userId,
@@ -224,7 +244,7 @@ func (c *client) CreateUser(ctx context.Context, jwtToken, accountId, userId, us
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
 
 	var user User
 	if err := c.sendRequest(req, &user); err != nil {
@@ -234,7 +254,12 @@ func (c *client) CreateUser(ctx context.Context, jwtToken, accountId, userId, us
 	return user, nil
 }
 
-func (c *client) CreateRole(ctx context.Context, jwtToken, accountId, roleId, roleName string) (Role, error) {
+func (c *client) CreateRole(ctx context.Context, accountId, roleId, roleName string) (Role, error) {
+
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return Role{}, fmt.Errorf("no token")
+	}
 
 	body := &roleData{
 		RoleId:   roleId,
@@ -256,7 +281,7 @@ func (c *client) CreateRole(ctx context.Context, jwtToken, accountId, roleId, ro
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
 
 	var role Role
 	if err := c.sendRequest(req, &role); err != nil {
@@ -266,7 +291,12 @@ func (c *client) CreateRole(ctx context.Context, jwtToken, accountId, roleId, ro
 	return role, nil
 }
 
-func (c *client) AssignRole(ctx context.Context, jwtToken, accountId, roleId, userId string) error {
+func (c *client) AssignRole(ctx context.Context, accountId, roleId, userId string) error {
+
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return fmt.Errorf("no token")
+	}
 
 	req, err := http.NewRequest(
 		"POST",
@@ -277,7 +307,7 @@ func (c *client) AssignRole(ctx context.Context, jwtToken, accountId, roleId, us
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return err
@@ -286,7 +316,12 @@ func (c *client) AssignRole(ctx context.Context, jwtToken, accountId, roleId, us
 	return nil
 }
 
-func (c *client) CreatePermission(ctx context.Context, jwtToken, accountId, permitteeId, resourceId string, policies []string) error {
+func (c *client) CreatePermission(ctx context.Context, accountId, permitteeId, resourceId string, policies []string) error {
+
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return fmt.Errorf("no token")
+	}
 
 	body := &permissionData{
 		PermitteeId: permitteeId,
@@ -309,7 +344,7 @@ func (c *client) CreatePermission(ctx context.Context, jwtToken, accountId, perm
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken)
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return err
