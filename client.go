@@ -78,6 +78,10 @@ type Client interface {
 	CreateRole(ctx context.Context, accountId, roleId, roleName string) (Role, error)
 	AssignRole(ctx context.Context, accountId, roleId, userId string) error
 	CreatePermission(ctx context.Context, accountId, permitteeId, resourceId string, policies []string) error
+	GetUsersForAccount(ctx context.Context, accountId string) ([]User, error)
+	GetRolesForAccount(ctx context.Context, accountId string) ([]Role, error)
+	GetUsersForRole(ctx context.Context, accountId, roleId string) ([]User, error)
+	GetRolesForUser(ctx context.Context, accountId, userId string) ([]Role, error)
 }
 
 type client struct {
@@ -351,6 +355,106 @@ func (c *client) CreatePermission(ctx context.Context, accountId, permitteeId, r
 	}
 
 	return nil
+}
+
+func (c *client) GetUsersForAccount(ctx context.Context, accountId string) ([]User, error) {
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return []User{}, fmt.Errorf("no token")
+	}
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("%s/api/accounts/%s/users", c.baseURL, accountId),
+		nil)
+	if err != nil {
+		return []User{}, err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+
+	var users []User
+	if err := c.sendRequest(req, &users); err != nil {
+		return []User{}, err
+	}
+
+	return users, nil
+}
+
+func (c *client) GetRolesForAccount(ctx context.Context, accountId string) ([]Role, error) {
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return []Role{}, fmt.Errorf("no token")
+	}
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("%s/api/accounts/%s/roles", c.baseURL, accountId),
+		nil)
+	if err != nil {
+		return []Role{}, err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+
+	var roles []Role
+	if err := c.sendRequest(req, &roles); err != nil {
+		return []Role{}, err
+	}
+
+	return roles, nil
+}
+
+func (c *client) GetUsersForRole(ctx context.Context, accountId, roleId string) ([]User, error) {
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return []User{}, fmt.Errorf("no token")
+	}
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("%s/api/accounts/%s/users/roles/%s", c.baseURL, accountId, roleId),
+		nil)
+	if err != nil {
+		return []User{}, err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+
+	var users []User
+	if err := c.sendRequest(req, &users); err != nil {
+		return []User{}, err
+	}
+
+	return users, nil
+}
+
+func (c *client) GetRolesForUser(ctx context.Context, accountId, userId string) ([]Role, error) {
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return []Role{}, fmt.Errorf("no token")
+	}
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("%s/api/accounts/%s/roles/users/%s", c.baseURL, accountId, userId),
+		nil)
+	if err != nil {
+		return []Role{}, err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+
+	var roles []Role
+	if err := c.sendRequest(req, &roles); err != nil {
+		return []Role{}, err
+	}
+
+	return roles, nil
 }
 
 func (c *client) sendRequest(req *http.Request, v interface{}) error {
