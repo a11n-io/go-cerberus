@@ -129,7 +129,7 @@ func (c *client) HasAccess(ctx context.Context, accountId, userId, resourceId, a
 	}
 
 	req, err := http.NewRequest(
-		"POST",
+		"GET",
 		fmt.Sprintf("%s/api/accounts/%s/access/permitteeid/%s/resourceid/%s/actionname/%s", c.baseURL, accountId, userId, resourceId, action), nil)
 	if err != nil {
 		return false, err
