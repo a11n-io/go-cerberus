@@ -618,7 +618,7 @@ func (c *client) SetMigrationVersion(ctx context.Context, version MigrationVersi
 	}
 
 	req, err := http.NewRequest(
-		"GET",
+		"POST",
 		fmt.Sprintf("%s/api/migrationversion", c.baseURL),
 		payloadBuf)
 	if err != nil {
