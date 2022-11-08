@@ -69,6 +69,10 @@ type permissionData struct {
 	PolicyNames []string `json:"policyNames"`
 }
 
+type scriptData struct {
+	Script string `json:"script"`
+}
+
 type Client interface {
 	GetToken(ctx context.Context, accountId, userId string) (string, error)
 	HasAccess(ctx context.Context, resourceId, action string) (bool, error)
@@ -84,6 +88,7 @@ type Client interface {
 	GetRoles(ctx context.Context) ([]Role, error)
 	GetUsersForRole(ctx context.Context, roleId string) ([]User, error)
 	GetRolesForUser(ctx context.Context, userId string) ([]Role, error)
+	Migrate(ctx context.Context, script string) error
 }
 
 type client struct {
@@ -509,6 +514,41 @@ func (c *client) GetRolesForUser(ctx context.Context, userId string) ([]Role, er
 	}
 
 	return roles, nil
+}
+
+func (c *client) Migrate(ctx context.Context, script string) error {
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return fmt.Errorf("no token")
+	}
+
+	body := &scriptData{
+		Script: script,
+	}
+
+	payloadBuf := new(bytes.Buffer)
+	err := json.NewEncoder(payloadBuf).Encode(body)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/script", c.baseURL),
+		payloadBuf)
+	if err != nil {
+		return err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+
+	if err := c.sendRequest(req, nil); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *client) sendRequest(req *http.Request, v interface{}) error {
