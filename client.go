@@ -71,7 +71,8 @@ type permissionData struct {
 
 type Client interface {
 	GetToken(ctx context.Context, accountId, userId string) (string, error)
-	HasAccess(ctx context.Context, userId, resourceId, action string) (bool, error)
+	HasAccess(ctx context.Context, resourceId, action string) (bool, error)
+	UserHasAccess(ctx context.Context, userId, resourceId, action string) (bool, error)
 	CreateAccount(ctx context.Context, accountId string) (Account, error)
 	CreateResource(ctx context.Context, resourceId, parentId, resourceType string) (Resource, error)
 	CreateUser(ctx context.Context, userId, userName, displayName string) (User, error)
@@ -124,7 +125,32 @@ func (c *client) GetToken(ctx context.Context, accountId, userId string) (string
 	return token, nil
 }
 
-func (c *client) HasAccess(ctx context.Context, userId, resourceId, action string) (bool, error) {
+func (c *client) HasAccess(ctx context.Context, resourceId, action string) (bool, error) {
+
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return false, fmt.Errorf("no token")
+	}
+
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("%s/api/access/resourceid/%s/actionname/%s", c.baseURL, resourceId, action), nil)
+	if err != nil {
+		return false, err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+
+	if err := c.sendRequest(req, nil); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (c *client) UserHasAccess(ctx context.Context, userId, resourceId, action string) (bool, error) {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
