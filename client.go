@@ -90,6 +90,7 @@ type Client interface {
 	GetUsersForRole(ctx context.Context, roleId string) ([]User, error)
 	GetRolesForUser(ctx context.Context, userId string) ([]Role, error)
 	Migrate(ctx context.Context, script string) error
+	Ping(ctx context.Context) error
 }
 
 type client struct {
@@ -564,6 +565,25 @@ func (c *client) Migrate(ctx context.Context, script string) error {
 	req = req.WithContext(ctx)
 
 	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+
+	if err := c.sendRequest(req, nil); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *client) Ping(ctx context.Context) error {
+
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("%s/ping", c.baseURL),
+		nil)
+	if err != nil {
+		return err
+	}
+
+	req = req.WithContext(ctx)
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return err
