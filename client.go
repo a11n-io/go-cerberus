@@ -70,18 +70,19 @@ type permissionData struct {
 }
 
 type Client interface {
-	GetToken(ctx context.Context) (string, error)
-	HasAccess(ctx context.Context, accountId, userId, resourceId, action string) (bool, error)
+	GetToken(ctx context.Context, accountId, userId string) (string, error)
+	HasAccess(ctx context.Context, userId, resourceId, action string) (bool, error)
 	CreateAccount(ctx context.Context, accountId string) (Account, error)
-	CreateResource(ctx context.Context, accountId, resourceId, parentId, resourceType string) (Resource, error)
-	CreateUser(ctx context.Context, accountId, userId, userName, displayName string) (User, error)
-	CreateRole(ctx context.Context, accountId, roleId, roleName string) (Role, error)
-	AssignRole(ctx context.Context, accountId, roleId, userId string) error
-	CreatePermission(ctx context.Context, accountId, permitteeId, resourceId string, policies []string) error
-	GetUsersForAccount(ctx context.Context, accountId string) ([]User, error)
-	GetRolesForAccount(ctx context.Context, accountId string) ([]Role, error)
-	GetUsersForRole(ctx context.Context, accountId, roleId string) ([]User, error)
-	GetRolesForUser(ctx context.Context, accountId, userId string) ([]Role, error)
+	CreateResource(ctx context.Context, resourceId, parentId, resourceType string) (Resource, error)
+	CreateUser(ctx context.Context, userId, userName, displayName string) (User, error)
+	CreateRole(ctx context.Context, roleId, roleName string) (Role, error)
+	AssignRole(ctx context.Context, roleId, userId string) error
+	UnassignRole(ctx context.Context, roleId, userId string) error
+	CreatePermission(ctx context.Context, permitteeId, resourceId string, policies []string) error
+	GetUsers(ctx context.Context) ([]User, error)
+	GetRoles(ctx context.Context) ([]Role, error)
+	GetUsersForRole(ctx context.Context, roleId string) ([]User, error)
+	GetRolesForUser(ctx context.Context, userId string) ([]Role, error)
 }
 
 type client struct {
@@ -102,9 +103,11 @@ func NewClient(baseUrl, apiKey, apiSecret string) Client {
 	}
 }
 
-func (c *client) GetToken(ctx context.Context) (string, error) {
+func (c *client) GetToken(ctx context.Context, accountId, userId string) (string, error) {
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/auth/token", c.baseURL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(
+		"%s/auth/token/accounts/%s/users/%s",
+		c.baseURL, accountId, userId), nil)
 	if err != nil {
 		return "", err
 	}
@@ -121,7 +124,7 @@ func (c *client) GetToken(ctx context.Context) (string, error) {
 	return token, nil
 }
 
-func (c *client) HasAccess(ctx context.Context, accountId, userId, resourceId, action string) (bool, error) {
+func (c *client) HasAccess(ctx context.Context, userId, resourceId, action string) (bool, error) {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -130,7 +133,7 @@ func (c *client) HasAccess(ctx context.Context, accountId, userId, resourceId, a
 
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/accounts/%s/access/permitteeid/%s/resourceid/%s/actionname/%s", c.baseURL, accountId, userId, resourceId, action), nil)
+		fmt.Sprintf("%s/api/access/permitteeid/%s/resourceid/%s/actionname/%s", c.baseURL, userId, resourceId, action), nil)
 	if err != nil {
 		return false, err
 	}
@@ -182,7 +185,7 @@ func (c *client) CreateAccount(ctx context.Context, accountId string) (Account, 
 	return account, nil
 }
 
-func (c *client) CreateResource(ctx context.Context, accountId, resourceId, parentId, resourceType string) (Resource, error) {
+func (c *client) CreateResource(ctx context.Context, resourceId, parentId, resourceType string) (Resource, error) {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -202,7 +205,7 @@ func (c *client) CreateResource(ctx context.Context, accountId, resourceId, pare
 	}
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/api/accounts/%s/resources", c.baseURL, accountId),
+		fmt.Sprintf("%s/api/resources", c.baseURL),
 		payloadBuf)
 	if err != nil {
 		return Resource{}, err
@@ -220,7 +223,7 @@ func (c *client) CreateResource(ctx context.Context, accountId, resourceId, pare
 	return resource, nil
 }
 
-func (c *client) CreateUser(ctx context.Context, accountId, userId, userName, displayName string) (User, error) {
+func (c *client) CreateUser(ctx context.Context, userId, userName, displayName string) (User, error) {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -240,7 +243,7 @@ func (c *client) CreateUser(ctx context.Context, accountId, userId, userName, di
 	}
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/api/accounts/%s/users", c.baseURL, accountId),
+		fmt.Sprintf("%s/api/users", c.baseURL),
 		payloadBuf)
 	if err != nil {
 		return User{}, err
@@ -258,7 +261,7 @@ func (c *client) CreateUser(ctx context.Context, accountId, userId, userName, di
 	return user, nil
 }
 
-func (c *client) CreateRole(ctx context.Context, accountId, roleId, roleName string) (Role, error) {
+func (c *client) CreateRole(ctx context.Context, roleId, roleName string) (Role, error) {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -277,7 +280,7 @@ func (c *client) CreateRole(ctx context.Context, accountId, roleId, roleName str
 	}
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/api/accounts/%s/roles", c.baseURL, accountId),
+		fmt.Sprintf("%s/api/roles", c.baseURL),
 		payloadBuf)
 	if err != nil {
 		return Role{}, err
@@ -295,7 +298,7 @@ func (c *client) CreateRole(ctx context.Context, accountId, roleId, roleName str
 	return role, nil
 }
 
-func (c *client) AssignRole(ctx context.Context, accountId, roleId, userId string) error {
+func (c *client) AssignRole(ctx context.Context, roleId, userId string) error {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -304,7 +307,7 @@ func (c *client) AssignRole(ctx context.Context, accountId, roleId, userId strin
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/api/accounts/%s/roles/%s/users/%s", c.baseURL, accountId, roleId, userId), nil)
+		fmt.Sprintf("%s/api/roles/%s/users/%s", c.baseURL, roleId, userId), nil)
 	if err != nil {
 		return err
 	}
@@ -320,7 +323,32 @@ func (c *client) AssignRole(ctx context.Context, accountId, roleId, userId strin
 	return nil
 }
 
-func (c *client) CreatePermission(ctx context.Context, accountId, permitteeId, resourceId string, policies []string) error {
+func (c *client) UnassignRole(ctx context.Context, roleId, userId string) error {
+
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return fmt.Errorf("no token")
+	}
+
+	req, err := http.NewRequest(
+		"DELETE",
+		fmt.Sprintf("%s/api/roles/%s/users/%s", c.baseURL, roleId, userId), nil)
+	if err != nil {
+		return err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+
+	if err := c.sendRequest(req, nil); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *client) CreatePermission(ctx context.Context, permitteeId, resourceId string, policies []string) error {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -340,7 +368,7 @@ func (c *client) CreatePermission(ctx context.Context, accountId, permitteeId, r
 	}
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/api/accounts/%s/permissions", c.baseURL, accountId),
+		fmt.Sprintf("%s/api/permissions", c.baseURL),
 		payloadBuf)
 	if err != nil {
 		return err
@@ -357,14 +385,14 @@ func (c *client) CreatePermission(ctx context.Context, accountId, permitteeId, r
 	return nil
 }
 
-func (c *client) GetUsersForAccount(ctx context.Context, accountId string) ([]User, error) {
+func (c *client) GetUsers(ctx context.Context) ([]User, error) {
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
 		return []User{}, fmt.Errorf("no token")
 	}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/accounts/%s/users", c.baseURL, accountId),
+		fmt.Sprintf("%s/api/users", c.baseURL),
 		nil)
 	if err != nil {
 		return []User{}, err
@@ -382,14 +410,14 @@ func (c *client) GetUsersForAccount(ctx context.Context, accountId string) ([]Us
 	return users, nil
 }
 
-func (c *client) GetRolesForAccount(ctx context.Context, accountId string) ([]Role, error) {
+func (c *client) GetRoles(ctx context.Context) ([]Role, error) {
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
 		return []Role{}, fmt.Errorf("no token")
 	}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/accounts/%s/roles", c.baseURL, accountId),
+		fmt.Sprintf("%s/api/roles", c.baseURL),
 		nil)
 	if err != nil {
 		return []Role{}, err
@@ -407,14 +435,14 @@ func (c *client) GetRolesForAccount(ctx context.Context, accountId string) ([]Ro
 	return roles, nil
 }
 
-func (c *client) GetUsersForRole(ctx context.Context, accountId, roleId string) ([]User, error) {
+func (c *client) GetUsersForRole(ctx context.Context, roleId string) ([]User, error) {
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
 		return []User{}, fmt.Errorf("no token")
 	}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/accounts/%s/users/roles/%s", c.baseURL, accountId, roleId),
+		fmt.Sprintf("%s/api/users/roles/%s", c.baseURL, roleId),
 		nil)
 	if err != nil {
 		return []User{}, err
@@ -432,14 +460,14 @@ func (c *client) GetUsersForRole(ctx context.Context, accountId, roleId string) 
 	return users, nil
 }
 
-func (c *client) GetRolesForUser(ctx context.Context, accountId, userId string) ([]Role, error) {
+func (c *client) GetRolesForUser(ctx context.Context, userId string) ([]Role, error) {
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
 		return []Role{}, fmt.Errorf("no token")
 	}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/accounts/%s/roles/users/%s", c.baseURL, accountId, userId),
+		fmt.Sprintf("%s/api/roles/users/%s", c.baseURL, userId),
 		nil)
 	if err != nil {
 		return []Role{}, err
