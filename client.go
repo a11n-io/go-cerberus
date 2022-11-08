@@ -74,7 +74,8 @@ type scriptData struct {
 }
 
 type Client interface {
-	GetToken(ctx context.Context, accountId, userId string) (string, error)
+	GetToken(ctx context.Context) (string, error)
+	GetUserToken(ctx context.Context, accountId, userId string) (string, error)
 	HasAccess(ctx context.Context, resourceId, action string) (bool, error)
 	UserHasAccess(ctx context.Context, userId, resourceId, action string) (bool, error)
 	CreateAccount(ctx context.Context, accountId string) (Account, error)
@@ -109,7 +110,27 @@ func NewClient(baseUrl, apiKey, apiSecret string) Client {
 	}
 }
 
-func (c *client) GetToken(ctx context.Context, accountId, userId string) (string, error) {
+func (c *client) GetToken(ctx context.Context) (string, error) {
+
+	req, err := http.NewRequest("GET", fmt.Sprintf(
+		"%s/auth/token", c.baseURL), nil)
+	if err != nil {
+		return "", err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.SetBasicAuth(c.apiKey, c.apiSecret)
+
+	var token string
+	if err := c.sendRequest(req, &token); err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
+
+func (c *client) GetUserToken(ctx context.Context, accountId, userId string) (string, error) {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf(
 		"%s/auth/token/accounts/%s/users/%s",
