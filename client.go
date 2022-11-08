@@ -89,7 +89,7 @@ type Client interface {
 	GetRoles(ctx context.Context) ([]Role, error)
 	GetUsersForRole(ctx context.Context, roleId string) ([]User, error)
 	GetRolesForUser(ctx context.Context, userId string) ([]Role, error)
-	Migrate(ctx context.Context, script string) error
+	RunScript(ctx context.Context, script string) error
 	Ping(ctx context.Context) error
 }
 
@@ -538,7 +538,7 @@ func (c *client) GetRolesForUser(ctx context.Context, userId string) ([]Role, er
 	return roles, nil
 }
 
-func (c *client) Migrate(ctx context.Context, script string) error {
+func (c *client) RunScript(ctx context.Context, script string) error {
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
 		return fmt.Errorf("no token")
