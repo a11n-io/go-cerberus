@@ -555,7 +555,7 @@ func (c *client) Migrate(ctx context.Context, script string) error {
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/script", c.baseURL),
+		fmt.Sprintf("%s/api/script", c.baseURL),
 		payloadBuf)
 	if err != nil {
 		return err
