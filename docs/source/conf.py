@@ -7,7 +7,7 @@ copyright = '2022, a11n.io'
 author = 'Jaco Kruger'
 
 release = '0.3'
-version = '0.3.26'
+version = '0.3.27'
 
 # -- General configuration
 

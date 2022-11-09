@@ -3,7 +3,7 @@ Usage
 
 .. _import:
 
-Installation
+Import
 ------------
 
 To use go-cerberus, import it in your go project:
@@ -15,7 +15,7 @@ To use go-cerberus, import it in your go project:
     )
 
 Creating the client
-----------------
+-------------------
 
 To create the client you will use the ``cerberus.NewClient(baseUrl, apiKey, apiSecret string)`` function:
 
