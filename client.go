@@ -23,8 +23,8 @@ type User struct {
 // A Role contains information identifying a cerberus role
 // specific to an Account on an App.
 type Role struct {
-	Id       string `json:"id"`
-	RoleName string `json:"roleName"`
+	Id   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // An Account contains information identifying a cerberus account
@@ -76,8 +76,8 @@ type userData struct {
 }
 
 type roleData struct {
-	RoleId   string `json:"roleId"`
-	RoleName string `json:"roleName"`
+	RoleId string `json:"roleId"`
+	Name   string `json:"name"`
 }
 
 type permissionData struct {
@@ -91,9 +91,9 @@ type scriptData struct {
 	Script string `json:"script"`
 }
 
-// A Client has the ability to communicate to the cerberus backend
+// A CerberusClient has the ability to communicate to the cerberus backend
 // using an ApiKey and ApiSecret, which represents a specific App
-type Client interface {
+type CerberusClient interface {
 	GetToken(ctx context.Context) (string, error)
 	GetUserToken(ctx context.Context, accountId, userId string) (string, error)
 	HasAccess(ctx context.Context, resourceId, action string) (bool, error)
@@ -115,7 +115,7 @@ type Client interface {
 	Ping(ctx context.Context) error
 }
 
-type client struct {
+type Client struct {
 	baseURL    string
 	apiKey     string
 	apiSecret  string
@@ -124,8 +124,8 @@ type client struct {
 
 // NewClient constructs a new client with apiKey and apiSecret
 // communicating with the cerberus backend at baseUrl.
-func NewClient(baseUrl, apiKey, apiSecret string) Client {
-	return &client{
+func NewClient(baseUrl, apiKey, apiSecret string) CerberusClient {
+	return &Client{
 		baseURL:   baseUrl,
 		apiKey:    apiKey,
 		apiSecret: apiSecret,
@@ -139,7 +139,7 @@ func NewClient(baseUrl, apiKey, apiSecret string) Client {
 // meant to be used by machine-type clients (e.g. migration automation, etc.).
 // The token returned is required for all other function calls.
 // This is the first function that should be called.
-func (c *client) GetToken(ctx context.Context) (string, error) {
+func (c *Client) GetToken(ctx context.Context) (string, error) {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf(
 		"%s/auth/token", c.baseURL), nil)
@@ -163,7 +163,7 @@ func (c *client) GetToken(ctx context.Context) (string, error) {
 // meant to be used by user-type clients (e.g. browsers with a logged-in user).
 // The token returned is required for all other function calls.
 // This is the first function that should be called.
-func (c *client) GetUserToken(ctx context.Context, accountId, userId string) (string, error) {
+func (c Client) GetUserToken(ctx context.Context, accountId, userId string) (string, error) {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf(
 		"%s/auth/token/accounts/%s/users/%s",
@@ -188,7 +188,7 @@ func (c *client) GetUserToken(ctx context.Context, accountId, userId string) (st
 // in order to perform action on it.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'
 // and that the JWT token is a user token.
-func (c *client) HasAccess(ctx context.Context, resourceId, action string) (bool, error) {
+func (c *Client) HasAccess(ctx context.Context, resourceId, action string) (bool, error) {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -216,7 +216,7 @@ func (c *client) HasAccess(ctx context.Context, resourceId, action string) (bool
 // UserHasAccess determines if the userId passed in has sufficient access rights for resourceId
 // in order to perform action on it.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) UserHasAccess(ctx context.Context, userId, resourceId, action string) (bool, error) {
+func (c *Client) UserHasAccess(ctx context.Context, userId, resourceId, action string) (bool, error) {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -244,7 +244,7 @@ func (c *client) UserHasAccess(ctx context.Context, userId, resourceId, action s
 // CreateAccount creates a new Account for an App with accountId as identifier.
 // It is assumed there is a user token in ctx under the key 'cerberusToken',
 // and the accountId should match the one previously specified to acquire the token
-func (c *client) CreateAccount(ctx context.Context, accountId string) (Account, error) {
+func (c *Client) CreateAccount(ctx context.Context, accountId string) (Account, error) {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -283,7 +283,7 @@ func (c *client) CreateAccount(ctx context.Context, accountId string) (Account, 
 // CreateResource creates a new Resource on an Account, which belongs to an App.
 // The resource is identified by resourceId, has an optional parent parentId and is of resourceType.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) CreateResource(ctx context.Context, resourceId, parentId, resourceType string) (Resource, error) {
+func (c *Client) CreateResource(ctx context.Context, resourceId, parentId, resourceType string) (Resource, error) {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -325,7 +325,7 @@ func (c *client) CreateResource(ctx context.Context, resourceId, parentId, resou
 // The User is identified by userId, has a userName which is unique for the Account
 // and a displayName for display.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) CreateUser(ctx context.Context, userId, userName, displayName string) (User, error) {
+func (c *Client) CreateUser(ctx context.Context, userId, userName, displayName string) (User, error) {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -366,7 +366,7 @@ func (c *client) CreateUser(ctx context.Context, userId, userName, displayName s
 // CreateRole creates a new Role on an Account, which belongs to an App.
 // A Role is identified by a roleId, and has a roleName unique to the Account.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) CreateRole(ctx context.Context, roleId, roleName string) (Role, error) {
+func (c *Client) CreateRole(ctx context.Context, roleId, name string) (Role, error) {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -374,8 +374,8 @@ func (c *client) CreateRole(ctx context.Context, roleId, roleName string) (Role,
 	}
 
 	body := &roleData{
-		RoleId:   roleId,
-		RoleName: roleName,
+		RoleId: roleId,
+		Name:   name,
 	}
 
 	payloadBuf := new(bytes.Buffer)
@@ -405,7 +405,7 @@ func (c *client) CreateRole(ctx context.Context, roleId, roleName string) (Role,
 
 // AssignRole assigns the User identified by userId to the Role identified by roleId.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) AssignRole(ctx context.Context, roleId, userId string) error {
+func (c *Client) AssignRole(ctx context.Context, roleId, userId string) error {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -432,7 +432,7 @@ func (c *client) AssignRole(ctx context.Context, roleId, userId string) error {
 
 // UnassignRole removes the User identified by userId from the Role identified by roleId.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) UnassignRole(ctx context.Context, roleId, userId string) error {
+func (c *Client) UnassignRole(ctx context.Context, roleId, userId string) error {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -460,7 +460,7 @@ func (c *client) UnassignRole(ctx context.Context, roleId, userId string) error 
 // CreatePermission grants permission to some permittee (which could be a User, a Role or a machine Client)
 // to the Resource identified by resourceId by granting a list of Policies which specifies which Actions are allowed.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) CreatePermission(ctx context.Context, permitteeId, resourceId string, policies []string) error {
+func (c *Client) CreatePermission(ctx context.Context, permitteeId, resourceId string, policies []string) error {
 
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
@@ -499,7 +499,7 @@ func (c *client) CreatePermission(ctx context.Context, permitteeId, resourceId s
 
 // GetUsers returns all the Users for an Account.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) GetUsers(ctx context.Context) ([]User, error) {
+func (c *Client) GetUsers(ctx context.Context) ([]User, error) {
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
 		return []User{}, fmt.Errorf("no token")
@@ -526,7 +526,7 @@ func (c *client) GetUsers(ctx context.Context) ([]User, error) {
 
 // GetRoles returns all the Roles for an Account.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) GetRoles(ctx context.Context) ([]Role, error) {
+func (c *Client) GetRoles(ctx context.Context) ([]Role, error) {
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
 		return []Role{}, fmt.Errorf("no token")
@@ -554,7 +554,7 @@ func (c *client) GetRoles(ctx context.Context) ([]Role, error) {
 // GetUsersForRole returns all the Users in the Account
 // who have been assigned to the Role identified by roleId.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) GetUsersForRole(ctx context.Context, roleId string) ([]User, error) {
+func (c *Client) GetUsersForRole(ctx context.Context, roleId string) ([]User, error) {
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
 		return []User{}, fmt.Errorf("no token")
@@ -582,7 +582,7 @@ func (c *client) GetUsersForRole(ctx context.Context, roleId string) ([]User, er
 // GetRolesForUser returns all the Roles to which the User identified by userId
 // has been assigned to.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) GetRolesForUser(ctx context.Context, userId string) ([]Role, error) {
+func (c *Client) GetRolesForUser(ctx context.Context, userId string) ([]Role, error) {
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
 		return []Role{}, fmt.Errorf("no token")
@@ -609,7 +609,7 @@ func (c *client) GetRolesForUser(ctx context.Context, userId string) ([]Role, er
 
 // RunScript runs a script on the App.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) RunScript(ctx context.Context, script string) error {
+func (c *Client) RunScript(ctx context.Context, script string) error {
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
 		return fmt.Errorf("no token")
@@ -646,7 +646,7 @@ func (c *client) RunScript(ctx context.Context, script string) error {
 
 // GetMigrationVersion returns the latest migration version and status for the App.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) GetMigrationVersion(ctx context.Context) (MigrationVersion, error) {
+func (c *Client) GetMigrationVersion(ctx context.Context) (MigrationVersion, error) {
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
 		return MigrationVersion{}, fmt.Errorf("no token")
@@ -673,7 +673,7 @@ func (c *client) GetMigrationVersion(ctx context.Context) (MigrationVersion, err
 
 // SetMigrationVersion sets the latest migration version and status for an App.
 // It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
-func (c *client) SetMigrationVersion(ctx context.Context, version MigrationVersion) error {
+func (c *Client) SetMigrationVersion(ctx context.Context, version MigrationVersion) error {
 	jwtToken := ctx.Value("cerberusToken")
 	if jwtToken == nil {
 		return fmt.Errorf("no token")
@@ -707,7 +707,7 @@ func (c *client) SetMigrationVersion(ctx context.Context, version MigrationVersi
 // Ping pings the cerberus backend.
 // If successful, an HTTP 200 with json result "pong" is returned.
 // No token is required.
-func (c *client) Ping(ctx context.Context) error {
+func (c *Client) Ping(ctx context.Context) error {
 
 	req, err := http.NewRequest(
 		"GET",
@@ -726,7 +726,7 @@ func (c *client) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (c *client) sendRequest(req *http.Request, v interface{}) error {
+func (c *Client) sendRequest(req *http.Request, v interface{}) error {
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/json; charset=utf-8")
