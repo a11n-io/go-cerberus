@@ -50,29 +50,53 @@ if err != nil {
 }
 
 cerberusContext := context.WithValue(ctx, "cerberusToken", cerberusToken)
-account, err := cerberusClient.CreateResource(cerberusContext, accountId, "", "Account")
+_, err := cerberusClient.CreateResource(cerberusContext, accountId, "", "Account")
 if err != nil {
 // handle error
 }
 
-user, err = cerberusClient.CreateUser(cerberusContext, userId, userEmail, userName)
+_, err = cerberusClient.CreateUser(cerberusContext, userId, userEmail, userName)
 if err != nil {
 // handle error
 }
 
 roleId := uuid.New().String()
-role, err = cerberusClient.CreateRole(cerberusContext, roleId, "AccountAdministrator")
+_, err = cerberusClient.CreateRole(cerberusContext, roleId, "AccountAdministrator")
 if err != nil {
 // handle error
 }
 
-err = cerberusClient.AssignRole(cerberusContext, roleId, user.Id)
+err = cerberusClient.AssignRole(cerberusContext, roleId, userId)
 if err != nil {
 // handle error
 }
 
-err = cerberusClient.CreatePermission(cerberusContext, roleId, account.Id, []string{"CanManageAccount"})
+err = cerberusClient.CreatePermission(cerberusContext, roleId, accountId, []string{"CanManageAccount"})
 if err != nil {
 // handle error
 }
 ```
+
+When executing multiple cerberus commands, it's better to use the 'Execute' method, which runs them all in sequence atomically.
+The code block above would then become:
+
+```go
+ctx := context.Background()
+cerberusToken, err := cerberusClient.GetUserToken(ctx, accountId, userId)
+if err != nil {
+// handle error
+}
+
+cerberusContext := context.WithValue(ctx, "cerberusToken", cerberusToken)
+
+err := cerberusClient.Execute(cerberusContext,
+    CreateResourceCmd(accountId, "", "Account"),
+    CreateUserCmd(userId, userEmail, userName),
+    CreateRoleCmd(roleId, "AccountAdministrator"),
+    AssignRoleCmd(roleId, userId),
+    CreatePermissionCmd(roleId, accountId, []string{"CanManageAccount"}))
+if err != nil {
+// handle error
+}
+```
+

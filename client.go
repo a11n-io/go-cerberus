@@ -91,6 +91,49 @@ type scriptData struct {
 	Script string `json:"script"`
 }
 
+// Commands
+
+type Command struct {
+	CreateAccount    *createAccountCmd    `json:"createAccount,omitempty"`
+	CreateResource   *createResourceCmd   `json:"createResource,omitempty"`
+	CreateUser       *createUserCmd       `json:"createUser,omitempty"`
+	CreateRole       *createRoleCmd       `json:"createRole,omitempty"`
+	AssignRole       *assignRoleCmd       `json:"assignRole,omitempty"`
+	UnassignRole     *unassignRoleCmd     `json:"unassignRole,omitempty"`
+	CreatePermission *createPermissionCmd `json:"createPermission,omitempty"`
+}
+
+type createAccountCmd struct {
+	AccountId string `json:"accountId"`
+}
+type createResourceCmd struct {
+	ResourceId   string `json:"resourceId"`
+	ParentId     string `json:"parentId"`
+	ResourceType string `json:"resourceType"`
+}
+type createUserCmd struct {
+	UserId      string `json:"userId"`
+	UserName    string `json:"userName"`
+	DisplayName string `json:"displayName"`
+}
+type createRoleCmd struct {
+	RoleId string `json:"roleId"`
+	Name   string `json:"roleName"`
+}
+type assignRoleCmd struct {
+	RoleId string `json:"roleId"`
+	UserId string `json:"userId"`
+}
+type unassignRoleCmd struct {
+	RoleId string `json:"roleId"`
+	UserId string `json:"userId"`
+}
+type createPermissionCmd struct {
+	PermitteeId string   `json:"permitteeId"`
+	ResourceId  string   `json:"resourceId"`
+	Policies    []string `json:"policies"`
+}
+
 // A CerberusClient has the ability to communicate to the cerberus backend
 // using an ApiKey and ApiSecret, which represents a specific App
 type CerberusClient interface {
@@ -113,6 +156,15 @@ type CerberusClient interface {
 	GetMigrationVersion(ctx context.Context) (MigrationVersion, error)
 	SetMigrationVersion(ctx context.Context, version MigrationVersion) error
 	Ping(ctx context.Context) error
+
+	Execute(ctx context.Context, command ...Command) error
+	CreateAccountCmd(accountId string) Command
+	CreateResourceCmd(resourceId, parentId, resourceType string) Command
+	CreateUserCmd(userId, userName, displayName string) Command
+	CreateRoleCmd(roleId, roleName string) Command
+	AssignRoleCmd(roleId, userId string) Command
+	UnassignRoleCmd(roleId, userId string) Command
+	CreatePermissionCmd(permitteeId, resourceId string, policies []string) Command
 }
 
 type Client struct {
@@ -163,7 +215,7 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 // meant to be used by user-type clients (e.g. browsers with a logged-in user).
 // The token returned is required for all other function calls.
 // This is the first function that should be called.
-func (c Client) GetUserToken(ctx context.Context, accountId, userId string) (string, error) {
+func (c *Client) GetUserToken(ctx context.Context, accountId, userId string) (string, error) {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf(
 		"%s/auth/token/accounts/%s/users/%s",
@@ -724,6 +776,112 @@ func (c *Client) Ping(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// Execute runs a series of commands in the given order within one transaction.
+// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+func (c *Client) Execute(ctx context.Context, commands ...Command) error {
+
+	jwtToken := ctx.Value("cerberusToken")
+	if jwtToken == nil {
+		return fmt.Errorf("no token")
+	}
+
+	payloadBuf := new(bytes.Buffer)
+	err := json.NewEncoder(payloadBuf).Encode(commands)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/api/commands", c.baseURL),
+		payloadBuf)
+	if err != nil {
+		return err
+	}
+
+	req = req.WithContext(ctx)
+
+	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+
+	if err := c.sendRequest(req, nil); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CreateAccountCmd returns a Command for CreateAccount
+func (c *Client) CreateAccountCmd(accountId string) Command {
+	return Command{
+		CreateAccount: &createAccountCmd{
+			AccountId: accountId,
+		},
+	}
+}
+
+// CreateResourceCmd returns a Command for CreateResource
+func (c *Client) CreateResourceCmd(resourceId, parentId, resourceType string) Command {
+	return Command{
+		CreateResource: &createResourceCmd{
+			ResourceId:   resourceId,
+			ParentId:     parentId,
+			ResourceType: resourceType,
+		},
+	}
+}
+
+// CreateUserCmd returns a Command for CreateUser
+func (c *Client) CreateUserCmd(userId, userName, displayName string) Command {
+	return Command{
+		CreateUser: &createUserCmd{
+			UserId:      userId,
+			UserName:    userName,
+			DisplayName: displayName,
+		},
+	}
+}
+
+// CreateRoleCmd returns a Command for CreateRole
+func (c *Client) CreateRoleCmd(roleId, name string) Command {
+	return Command{
+		CreateRole: &createRoleCmd{
+			RoleId: roleId,
+			Name:   name,
+		},
+	}
+}
+
+// AssignRoleCmd returns a Command for AssignRole
+func (c *Client) AssignRoleCmd(roleId, userId string) Command {
+	return Command{
+		AssignRole: &assignRoleCmd{
+			RoleId: roleId,
+			UserId: userId,
+		},
+	}
+}
+
+// UnassignRoleCmd returns a Command for UnassignRole
+func (c *Client) UnassignRoleCmd(roleId, userId string) Command {
+	return Command{
+		UnassignRole: &unassignRoleCmd{
+			RoleId: roleId,
+			UserId: userId,
+		},
+	}
+}
+
+// CreatePermissionCmd returns a Command for CreatePermission
+func (c *Client) CreatePermissionCmd(permitteeId, resourceId string, policies []string) Command {
+	return Command{
+		CreatePermission: &createPermissionCmd{
+			PermitteeId: permitteeId,
+			ResourceId:  resourceId,
+			Policies:    policies,
+		},
+	}
 }
 
 func (c *Client) sendRequest(req *http.Request, v interface{}) error {
