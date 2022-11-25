@@ -249,7 +249,7 @@ func (c *Client) HasAccess(ctx context.Context, resourceId, action string) (bool
 
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/access/resourceid/%s/actionname/%s", c.baseURL, resourceId, action), nil)
+		fmt.Sprintf("%s/api/access/%s/%s", c.baseURL, resourceId, action), nil)
 	if err != nil {
 		return false, err
 	}
@@ -277,7 +277,7 @@ func (c *Client) UserHasAccess(ctx context.Context, userId, resourceId, action s
 
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/access/permitteeid/%s/resourceid/%s/actionname/%s", c.baseURL, userId, resourceId, action), nil)
+		fmt.Sprintf("%s/api/access/%s/%s/%s", c.baseURL, userId, resourceId, action), nil)
 	if err != nil {
 		return false, err
 	}
