@@ -48,6 +48,12 @@ type MigrationVersion struct {
 	Dirty   bool `json:"dirty"`
 }
 
+// A TokenPair contains a short-lived access token and a long-lived refresh token
+type TokenPair struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
 type errorResponse struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -89,6 +95,10 @@ type permissionData struct {
 
 type scriptData struct {
 	Script string `json:"script"`
+}
+
+type refreshTokenData struct {
+	RefreshToken string `json:"refreshToken"`
 }
 
 // Commands
@@ -137,8 +147,8 @@ type createPermissionCmd struct {
 // A CerberusClient has the ability to communicate to the cerberus backend
 // using an ApiKey and ApiSecret, which represents a specific App
 type CerberusClient interface {
-	GetToken(ctx context.Context) (string, error)
-	GetUserToken(ctx context.Context, accountId, userId string) (string, error)
+	GetToken(ctx context.Context) (TokenPair, error)
+	GetUserToken(ctx context.Context, accountId, userId string) (TokenPair, error)
 	HasAccess(ctx context.Context, resourceId, action string) (bool, error)
 	UserHasAccess(ctx context.Context, userId, resourceId, action string) (bool, error)
 	CreateAccount(ctx context.Context, accountId string) (Account, error)
@@ -187,53 +197,82 @@ func NewClient(baseUrl, apiKey, apiSecret string) CerberusClient {
 	}
 }
 
-// GetToken swaps the apiKey and apiSecret for a short-lived JWT token
+// GetToken swaps the apiKey and apiSecret for a TokenPair
 // meant to be used by machine-type clients (e.g. migration automation, etc.).
 // The token returned is required for all other function calls.
 // This is the first function that should be called.
-func (c *Client) GetToken(ctx context.Context) (string, error) {
+func (c *Client) GetToken(ctx context.Context) (TokenPair, error) {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf(
 		"%s/auth/token", c.baseURL), nil)
 	if err != nil {
-		return "", err
+		return TokenPair{}, err
 	}
 
 	req = req.WithContext(ctx)
 
 	req.SetBasicAuth(c.apiKey, c.apiSecret)
 
-	var token string
-	if err := c.sendRequest(req, &token); err != nil {
-		return "", err
+	var tokenPair TokenPair
+	if err := c.sendRequest(req, &tokenPair); err != nil {
+		return TokenPair{}, err
 	}
 
-	return token, nil
+	return tokenPair, nil
 }
 
-// GetUserToken swaps the apiKey and apiSecret for a short-lived JWT token
+// GetUserToken swaps the apiKey and apiSecret for a TokenPair
 // meant to be used by user-type clients (e.g. browsers with a logged-in user).
 // The token returned is required for all other function calls.
 // This is the first function that should be called.
-func (c *Client) GetUserToken(ctx context.Context, accountId, userId string) (string, error) {
+func (c *Client) GetUserToken(ctx context.Context, accountId, userId string) (TokenPair, error) {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf(
 		"%s/auth/token/accounts/%s/users/%s",
 		c.baseURL, accountId, userId), nil)
 	if err != nil {
-		return "", err
+		return TokenPair{}, err
 	}
 
 	req = req.WithContext(ctx)
 
 	req.SetBasicAuth(c.apiKey, c.apiSecret)
 
-	var token string
-	if err := c.sendRequest(req, &token); err != nil {
-		return "", err
+	var tokenPair TokenPair
+	if err := c.sendRequest(req, &tokenPair); err != nil {
+		return TokenPair{}, err
 	}
 
-	return token, nil
+	return tokenPair, nil
+}
+
+// RefreshToken swaps a refreshToken for a TokenPair with a new access token
+func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (TokenPair, error) {
+
+	body := &refreshTokenData{
+		RefreshToken: refreshToken,
+	}
+
+	payloadBuf := new(bytes.Buffer)
+	err := json.NewEncoder(payloadBuf).Encode(body)
+	if err != nil {
+		return TokenPair{}, err
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf(
+		"%s/auth/refreshtoken", c.baseURL), payloadBuf)
+	if err != nil {
+		return TokenPair{}, err
+	}
+
+	req = req.WithContext(ctx)
+
+	var tokenPair TokenPair
+	if err := c.sendRequest(req, &tokenPair); err != nil {
+		return TokenPair{}, err
+	}
+
+	return tokenPair, nil
 }
 
 // HasAccess determines if the userId in the token has sufficient access rights for resourceId
