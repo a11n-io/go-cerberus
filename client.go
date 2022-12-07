@@ -277,11 +277,11 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (TokenPa
 
 // HasAccess determines if the userId in the token has sufficient access rights for resourceId
 // in order to perform action on it.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'
 // and that the JWT token is a user token.
 func (c *Client) HasAccess(ctx context.Context, resourceId, action string) (bool, error) {
 
-	jwtToken := ctx.Value("cerberusToken")
+	jwtToken := ctx.Value("cerberusTokenPair")
 	if jwtToken == nil {
 		return false, fmt.Errorf("no token")
 	}
@@ -306,11 +306,11 @@ func (c *Client) HasAccess(ctx context.Context, resourceId, action string) (bool
 
 // UserHasAccess determines if the userId passed in has sufficient access rights for resourceId
 // in order to perform action on it.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) UserHasAccess(ctx context.Context, userId, resourceId, action string) (bool, error) {
 
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return false, fmt.Errorf("no token")
 	}
 
@@ -323,7 +323,7 @@ func (c *Client) UserHasAccess(ctx context.Context, userId, resourceId, action s
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return false, err
@@ -333,12 +333,12 @@ func (c *Client) UserHasAccess(ctx context.Context, userId, resourceId, action s
 }
 
 // CreateAccount creates a new Account for an App with accountId as identifier.
-// It is assumed there is a user token in ctx under the key 'cerberusToken',
+// It is assumed there is a user token pair in ctx under the key 'cerberusTokenPair',
 // and the accountId should match the one previously specified to acquire the token
 func (c *Client) CreateAccount(ctx context.Context, accountId string) (Account, error) {
 
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return Account{}, fmt.Errorf("no token")
 	}
 
@@ -361,7 +361,7 @@ func (c *Client) CreateAccount(ctx context.Context, accountId string) (Account, 
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	var account Account
 	if err := c.sendRequest(req, &account); err != nil {
@@ -373,11 +373,11 @@ func (c *Client) CreateAccount(ctx context.Context, accountId string) (Account, 
 
 // CreateResource creates a new Resource on an Account, which belongs to an App.
 // The resource is identified by resourceId, has an optional parent parentId and is of resourceType.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) CreateResource(ctx context.Context, resourceId, parentId, resourceType string) (Resource, error) {
 
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return Resource{}, fmt.Errorf("no token")
 	}
 
@@ -402,7 +402,7 @@ func (c *Client) CreateResource(ctx context.Context, resourceId, parentId, resou
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	var resource Resource
 	if err := c.sendRequest(req, &resource); err != nil {
@@ -415,11 +415,11 @@ func (c *Client) CreateResource(ctx context.Context, resourceId, parentId, resou
 // CreateUser creates a new User on an Account, which belongs to an App.
 // The User is identified by userId, has a userName which is unique for the Account
 // and a displayName for display.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) CreateUser(ctx context.Context, userId, userName, displayName string) (User, error) {
 
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return User{}, fmt.Errorf("no token")
 	}
 
@@ -444,7 +444,7 @@ func (c *Client) CreateUser(ctx context.Context, userId, userName, displayName s
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	var user User
 	if err := c.sendRequest(req, &user); err != nil {
@@ -456,11 +456,11 @@ func (c *Client) CreateUser(ctx context.Context, userId, userName, displayName s
 
 // CreateRole creates a new Role on an Account, which belongs to an App.
 // A Role is identified by a roleId, and has a roleName unique to the Account.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) CreateRole(ctx context.Context, roleId, name string) (Role, error) {
 
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return Role{}, fmt.Errorf("no token")
 	}
 
@@ -484,7 +484,7 @@ func (c *Client) CreateRole(ctx context.Context, roleId, name string) (Role, err
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	var role Role
 	if err := c.sendRequest(req, &role); err != nil {
@@ -495,11 +495,11 @@ func (c *Client) CreateRole(ctx context.Context, roleId, name string) (Role, err
 }
 
 // AssignRole assigns the User identified by userId to the Role identified by roleId.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) AssignRole(ctx context.Context, roleId, userId string) error {
 
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return fmt.Errorf("no token")
 	}
 
@@ -512,7 +512,7 @@ func (c *Client) AssignRole(ctx context.Context, roleId, userId string) error {
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return err
@@ -522,11 +522,11 @@ func (c *Client) AssignRole(ctx context.Context, roleId, userId string) error {
 }
 
 // UnassignRole removes the User identified by userId from the Role identified by roleId.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) UnassignRole(ctx context.Context, roleId, userId string) error {
 
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return fmt.Errorf("no token")
 	}
 
@@ -539,7 +539,7 @@ func (c *Client) UnassignRole(ctx context.Context, roleId, userId string) error 
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return err
@@ -550,11 +550,11 @@ func (c *Client) UnassignRole(ctx context.Context, roleId, userId string) error 
 
 // CreatePermission grants permission to some permittee (which could be a User, a Role or a machine Client)
 // to the Resource identified by resourceId by granting a list of Policies which specifies which Actions are allowed.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) CreatePermission(ctx context.Context, permitteeId, resourceId string, policies []string) error {
 
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return fmt.Errorf("no token")
 	}
 
@@ -579,7 +579,7 @@ func (c *Client) CreatePermission(ctx context.Context, permitteeId, resourceId s
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return err
@@ -589,10 +589,10 @@ func (c *Client) CreatePermission(ctx context.Context, permitteeId, resourceId s
 }
 
 // GetUsers returns all the Users for an Account.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) GetUsers(ctx context.Context) ([]User, error) {
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return []User{}, fmt.Errorf("no token")
 	}
 	req, err := http.NewRequest(
@@ -605,7 +605,7 @@ func (c *Client) GetUsers(ctx context.Context) ([]User, error) {
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	var users []User
 	if err := c.sendRequest(req, &users); err != nil {
@@ -616,10 +616,10 @@ func (c *Client) GetUsers(ctx context.Context) ([]User, error) {
 }
 
 // GetRoles returns all the Roles for an Account.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) GetRoles(ctx context.Context) ([]Role, error) {
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return []Role{}, fmt.Errorf("no token")
 	}
 	req, err := http.NewRequest(
@@ -632,7 +632,7 @@ func (c *Client) GetRoles(ctx context.Context) ([]Role, error) {
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	var roles []Role
 	if err := c.sendRequest(req, &roles); err != nil {
@@ -644,10 +644,10 @@ func (c *Client) GetRoles(ctx context.Context) ([]Role, error) {
 
 // GetUsersForRole returns all the Users in the Account
 // who have been assigned to the Role identified by roleId.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) GetUsersForRole(ctx context.Context, roleId string) ([]User, error) {
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return []User{}, fmt.Errorf("no token")
 	}
 	req, err := http.NewRequest(
@@ -660,7 +660,7 @@ func (c *Client) GetUsersForRole(ctx context.Context, roleId string) ([]User, er
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	var users []User
 	if err := c.sendRequest(req, &users); err != nil {
@@ -672,10 +672,10 @@ func (c *Client) GetUsersForRole(ctx context.Context, roleId string) ([]User, er
 
 // GetRolesForUser returns all the Roles to which the User identified by userId
 // has been assigned to.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) GetRolesForUser(ctx context.Context, userId string) ([]Role, error) {
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return []Role{}, fmt.Errorf("no token")
 	}
 	req, err := http.NewRequest(
@@ -688,7 +688,7 @@ func (c *Client) GetRolesForUser(ctx context.Context, userId string) ([]Role, er
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	var roles []Role
 	if err := c.sendRequest(req, &roles); err != nil {
@@ -699,10 +699,10 @@ func (c *Client) GetRolesForUser(ctx context.Context, userId string) ([]Role, er
 }
 
 // RunScript runs a script on the App.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) RunScript(ctx context.Context, script string) error {
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return fmt.Errorf("no token")
 	}
 
@@ -726,7 +726,7 @@ func (c *Client) RunScript(ctx context.Context, script string) error {
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return err
@@ -736,10 +736,10 @@ func (c *Client) RunScript(ctx context.Context, script string) error {
 }
 
 // GetMigrationVersion returns the latest migration version and status for the App.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) GetMigrationVersion(ctx context.Context) (MigrationVersion, error) {
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return MigrationVersion{}, fmt.Errorf("no token")
 	}
 	req, err := http.NewRequest(
@@ -752,7 +752,7 @@ func (c *Client) GetMigrationVersion(ctx context.Context) (MigrationVersion, err
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	var mv MigrationVersion
 	if err := c.sendRequest(req, &mv); err != nil {
@@ -763,10 +763,10 @@ func (c *Client) GetMigrationVersion(ctx context.Context) (MigrationVersion, err
 }
 
 // SetMigrationVersion sets the latest migration version and status for an App.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) SetMigrationVersion(ctx context.Context, version MigrationVersion) error {
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return fmt.Errorf("no token")
 	}
 
@@ -786,7 +786,7 @@ func (c *Client) SetMigrationVersion(ctx context.Context, version MigrationVersi
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return err
@@ -818,11 +818,11 @@ func (c *Client) Ping(ctx context.Context) error {
 }
 
 // Execute runs a series of commands in the given order within one transaction.
-// It is assumed that the JWT token acquired earlier is now in ctx, under the key 'cerberusToken'.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) Execute(ctx context.Context, commands ...Command) error {
 
-	jwtToken := ctx.Value("cerberusToken")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return fmt.Errorf("no token")
 	}
 
@@ -842,7 +842,7 @@ func (c *Client) Execute(ctx context.Context, commands ...Command) error {
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return err
