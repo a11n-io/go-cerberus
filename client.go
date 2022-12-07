@@ -281,8 +281,8 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (TokenPa
 // and that the JWT token is a user token.
 func (c *Client) HasAccess(ctx context.Context, resourceId, action string) (bool, error) {
 
-	jwtToken := ctx.Value("cerberusTokenPair")
-	if jwtToken == nil {
+	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	if jwtTokenPair == nil {
 		return false, fmt.Errorf("no token")
 	}
 
@@ -295,7 +295,7 @@ func (c *Client) HasAccess(ctx context.Context, resourceId, action string) (bool
 
 	req = req.WithContext(ctx)
 
-	req.Header.Set("Authorization", "Bearer "+jwtToken.(string))
+	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
 	if err := c.sendRequest(req, nil); err != nil {
 		return false, err
