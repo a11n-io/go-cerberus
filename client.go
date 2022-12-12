@@ -82,8 +82,9 @@ type userData struct {
 }
 
 type roleData struct {
-	RoleId string `json:"roleId"`
-	Name   string `json:"name"`
+	RoleId       string `json:"roleId"`
+	Name         string `json:"name"`
+	IsSuperAdmin bool   `json:"isSuperAdmin"`
 }
 
 type permissionData struct {
@@ -127,8 +128,9 @@ type createUserCmd struct {
 	DisplayName string `json:"displayName"`
 }
 type createRoleCmd struct {
-	RoleId string `json:"roleId"`
-	Name   string `json:"roleName"`
+	RoleId       string `json:"roleId"`
+	Name         string `json:"roleName"`
+	IsSuperAdmin bool   `json:"isSuperAdmin"`
 }
 type assignRoleCmd struct {
 	RoleId string `json:"roleId"`
@@ -154,6 +156,7 @@ type CerberusClient interface {
 	CreateAccount(ctx context.Context, accountId string) (Account, error)
 	CreateResource(ctx context.Context, resourceId, parentId, resourceType string) (Resource, error)
 	CreateUser(ctx context.Context, userId, userName, displayName string) (User, error)
+	CreateSuperRole(ctx context.Context, roleId, roleName string) (Role, error)
 	CreateRole(ctx context.Context, roleId, roleName string) (Role, error)
 	AssignRole(ctx context.Context, roleId, userId string) error
 	UnassignRole(ctx context.Context, roleId, userId string) error
@@ -172,6 +175,7 @@ type CerberusClient interface {
 	CreateResourceCmd(resourceId, parentId, resourceType string) Command
 	CreateUserCmd(userId, userName, displayName string) Command
 	CreateRoleCmd(roleId, roleName string) Command
+	CreateSuperRoleCmd(roleId, roleName string) Command
 	AssignRoleCmd(roleId, userId string) Command
 	UnassignRoleCmd(roleId, userId string) Command
 	CreatePermissionCmd(permitteeId, resourceId string, policies []string) Command
@@ -458,6 +462,18 @@ func (c *Client) CreateUser(ctx context.Context, userId, userName, displayName s
 // A Role is identified by a roleId, and has a roleName unique to the Account.
 // It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
 func (c *Client) CreateRole(ctx context.Context, roleId, name string) (Role, error) {
+	return c.createRole(ctx, roleId, name, false)
+}
+
+// CreateSuperRole creates a new 'super' Role on an Account, which belongs to an App.
+// A Role is identified by a roleId, and has a roleName unique to the Account.
+// A super Role has access to all resources regardless of permissions. There can only be one super role per Account.
+// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
+func (c *Client) CreateSuperRole(ctx context.Context, roleId, name string) (Role, error) {
+	return c.createRole(ctx, roleId, name, true)
+}
+
+func (c *Client) createRole(ctx context.Context, roleId, name string, isSuperAdmin bool) (Role, error) {
 
 	jwtTokenPair := ctx.Value("cerberusTokenPair")
 	if jwtTokenPair == nil {
@@ -465,8 +481,9 @@ func (c *Client) CreateRole(ctx context.Context, roleId, name string) (Role, err
 	}
 
 	body := &roleData{
-		RoleId: roleId,
-		Name:   name,
+		RoleId:       roleId,
+		Name:         name,
+		IsSuperAdmin: isSuperAdmin,
 	}
 
 	payloadBuf := new(bytes.Buffer)
@@ -886,8 +903,20 @@ func (c *Client) CreateUserCmd(userId, userName, displayName string) Command {
 func (c *Client) CreateRoleCmd(roleId, name string) Command {
 	return Command{
 		CreateRole: &createRoleCmd{
-			RoleId: roleId,
-			Name:   name,
+			RoleId:       roleId,
+			Name:         name,
+			IsSuperAdmin: false,
+		},
+	}
+}
+
+// CreateSuperRoleCmd returns a Command for CreateSuperRole
+func (c *Client) CreateSuperRoleCmd(roleId, name string) Command {
+	return Command{
+		CreateRole: &createRoleCmd{
+			RoleId:       roleId,
+			Name:         name,
+			IsSuperAdmin: true,
 		},
 	}
 }
