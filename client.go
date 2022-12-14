@@ -111,13 +111,14 @@ type executeCommands struct {
 }
 
 type Command struct {
-	CreateAccount    *createAccountCmd    `json:"createAccount,omitempty"`
-	CreateResource   *createResourceCmd   `json:"createResource,omitempty"`
-	CreateUser       *createUserCmd       `json:"createUser,omitempty"`
-	CreateRole       *createRoleCmd       `json:"createRole,omitempty"`
-	AssignRole       *assignRoleCmd       `json:"assignRole,omitempty"`
-	UnassignRole     *unassignRoleCmd     `json:"unassignRole,omitempty"`
-	CreatePermission *createPermissionCmd `json:"createPermission,omitempty"`
+	CreateAccount        *createAccountCmd        `json:"createAccount,omitempty"`
+	CreateResource       *createResourceCmd       `json:"createResource,omitempty"`
+	CreateUser           *createUserCmd           `json:"createUser,omitempty"`
+	CreateRole           *createRoleCmd           `json:"createRole,omitempty"`
+	AssignRole           *assignRoleCmd           `json:"assignRole,omitempty"`
+	UnassignRole         *unassignRoleCmd         `json:"unassignRole,omitempty"`
+	CreateUserPermission *createUserPermissionCmd `json:"createUserPermission,omitempty"`
+	CreateRolePermission *createRolePermissionCmd `json:"createRolePermission,omitempty"`
 }
 
 type createAccountCmd struct {
@@ -146,10 +147,15 @@ type unassignRoleCmd struct {
 	RoleName string `json:"roleName"`
 	UserId   string `json:"userId"`
 }
-type createPermissionCmd struct {
-	PermitteeId string   `json:"permitteeId"`
-	ResourceId  string   `json:"resourceId"`
-	Policies    []string `json:"policies"`
+type createUserPermissionCmd struct {
+	UserId     string   `json:"userId"`
+	ResourceId string   `json:"resourceId"`
+	Policies   []string `json:"policies"`
+}
+type createRolePermissionCmd struct {
+	RoleName   string   `json:"roleName"`
+	ResourceId string   `json:"resourceId"`
+	Policies   []string `json:"policies"`
 }
 
 // A CerberusClient has the ability to communicate to the cerberus backend
@@ -179,7 +185,8 @@ type CerberusClient interface {
 	CreateSuperRoleWithIdCmd(roleId, roleName string) Command
 	AssignRoleCmd(roleName, userId string) Command
 	UnassignRoleCmd(roleName, userId string) Command
-	CreatePermissionCmd(permitteeId, resourceId string, policies []string) Command
+	CreateUserPermissionCmd(userId, resourceId string, policies []string) Command
+	CreateRolePermissionCmd(roleName, resourceId string, policies []string) Command
 }
 
 type Client struct {
@@ -735,14 +742,26 @@ func (c *Client) UnassignRoleCmd(roleName, userId string) Command {
 	}
 }
 
-// CreatePermissionCmd returns a Command that grants permission to some permittee (which could be a User, a Role or a machine Client)
+// CreateUserPermissionCmd returns a Command that grants permission to some user with userId
 // to the Resource identified by resourceId by granting a list of Policies which specifies which Actions are allowed.
-func (c *Client) CreatePermissionCmd(permitteeId, resourceId string, policies []string) Command {
+func (c *Client) CreateUserPermissionCmd(userId, resourceId string, policies []string) Command {
 	return Command{
-		CreatePermission: &createPermissionCmd{
-			PermitteeId: permitteeId,
-			ResourceId:  resourceId,
-			Policies:    policies,
+		CreateUserPermission: &createUserPermissionCmd{
+			UserId:     userId,
+			ResourceId: resourceId,
+			Policies:   policies,
+		},
+	}
+}
+
+// CreateRolePermissionCmd returns a Command that grants permission to some role with roleName
+// to the Resource identified by resourceId by granting a list of Policies which specifies which Actions are allowed.
+func (c *Client) CreateRolePermissionCmd(roleName, resourceId string, policies []string) Command {
+	return Command{
+		CreateRolePermission: &createRolePermissionCmd{
+			RoleName:   roleName,
+			ResourceId: resourceId,
+			Policies:   policies,
 		},
 	}
 }
