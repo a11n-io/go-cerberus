@@ -104,6 +104,12 @@ type refreshTokenData struct {
 
 // Commands
 
+type executeCommands struct {
+	AccountId string    `json:"accountId,omitempty"`
+	UserId    string    `json:"userId,omitempty"`
+	Commands  []Command `json:"commands"`
+}
+
 type Command struct {
 	CreateAccount    *createAccountCmd    `json:"createAccount,omitempty"`
 	CreateResource   *createResourceCmd   `json:"createResource,omitempty"`
@@ -149,18 +155,10 @@ type createPermissionCmd struct {
 // A CerberusClient has the ability to communicate to the cerberus backend
 // using an ApiKey and ApiSecret, which represents a specific App
 type CerberusClient interface {
-	GetToken(ctx context.Context) (TokenPair, error)
-	GetUserToken(ctx context.Context, accountId, userId string) (TokenPair, error)
+	GetToken() (TokenPair, error)
+	GetUserToken(accountId, userId string) (TokenPair, error)
 	HasAccess(ctx context.Context, resourceId, action string) (bool, error)
 	UserHasAccess(ctx context.Context, userId, resourceId, action string) (bool, error)
-	CreateAccount(ctx context.Context, accountId string) (Account, error)
-	CreateResource(ctx context.Context, resourceId, parentId, resourceType string) (Resource, error)
-	CreateUser(ctx context.Context, userId, userName, displayName string) (User, error)
-	CreateSuperRole(ctx context.Context, roleId, roleName string) (Role, error)
-	CreateRole(ctx context.Context, roleId, roleName string) (Role, error)
-	AssignRole(ctx context.Context, roleId, userId string) error
-	UnassignRole(ctx context.Context, roleId, userId string) error
-	CreatePermission(ctx context.Context, permitteeId, resourceId string, policies []string) error
 	GetUsers(ctx context.Context) ([]User, error)
 	GetRoles(ctx context.Context) ([]Role, error)
 	GetUsersForRole(ctx context.Context, roleId string) ([]User, error)
@@ -170,7 +168,8 @@ type CerberusClient interface {
 	SetMigrationVersion(ctx context.Context, version MigrationVersion) error
 	Ping(ctx context.Context) error
 
-	Execute(ctx context.Context, command ...Command) error
+	Execute(accountId, userId string, command ...Command) error
+	ExecuteWithCtx(ctx context.Context, command ...Command) error
 	CreateAccountCmd(accountId string) Command
 	CreateResourceCmd(resourceId, parentId, resourceType string) Command
 	CreateUserCmd(userId, userName, displayName string) Command
@@ -205,15 +204,13 @@ func NewClient(baseUrl, apiKey, apiSecret string) CerberusClient {
 // meant to be used by machine-type clients (e.g. migration automation, etc.).
 // The token returned is required for all other function calls.
 // This is the first function that should be called.
-func (c *Client) GetToken(ctx context.Context) (TokenPair, error) {
+func (c *Client) GetToken() (TokenPair, error) {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf(
 		"%s/auth/token", c.baseURL), nil)
 	if err != nil {
 		return TokenPair{}, err
 	}
-
-	req = req.WithContext(ctx)
 
 	req.SetBasicAuth(c.apiKey, c.apiSecret)
 
@@ -229,7 +226,7 @@ func (c *Client) GetToken(ctx context.Context) (TokenPair, error) {
 // meant to be used by user-type clients (e.g. browsers with a logged-in user).
 // The token returned is required for all other function calls.
 // This is the first function that should be called.
-func (c *Client) GetUserToken(ctx context.Context, accountId, userId string) (TokenPair, error) {
+func (c *Client) GetUserToken(accountId, userId string) (TokenPair, error) {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf(
 		"%s/auth/token/accounts/%s/users/%s",
@@ -237,8 +234,6 @@ func (c *Client) GetUserToken(ctx context.Context, accountId, userId string) (To
 	if err != nil {
 		return TokenPair{}, err
 	}
-
-	req = req.WithContext(ctx)
 
 	req.SetBasicAuth(c.apiKey, c.apiSecret)
 
@@ -334,275 +329,6 @@ func (c *Client) UserHasAccess(ctx context.Context, userId, resourceId, action s
 	}
 
 	return true, nil
-}
-
-// CreateAccount creates a new Account for an App with accountId as identifier.
-// It is assumed there is a user token pair in ctx under the key 'cerberusTokenPair',
-// and the accountId should match the one previously specified to acquire the token
-func (c *Client) CreateAccount(ctx context.Context, accountId string) (Account, error) {
-
-	jwtTokenPair := ctx.Value("cerberusTokenPair")
-	if jwtTokenPair == nil {
-		return Account{}, fmt.Errorf("no token")
-	}
-
-	body := &accountData{
-		AccountId: accountId,
-	}
-
-	payloadBuf := new(bytes.Buffer)
-	err := json.NewEncoder(payloadBuf).Encode(body)
-	if err != nil {
-		return Account{}, err
-	}
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("%s/api/accounts", c.baseURL),
-		payloadBuf)
-	if err != nil {
-		return Account{}, err
-	}
-
-	req = req.WithContext(ctx)
-
-	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
-
-	var account Account
-	if err := c.sendRequest(req, &account); err != nil {
-		return Account{}, err
-	}
-
-	return account, nil
-}
-
-// CreateResource creates a new Resource on an Account, which belongs to an App.
-// The resource is identified by resourceId, has an optional parent parentId and is of resourceType.
-// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
-func (c *Client) CreateResource(ctx context.Context, resourceId, parentId, resourceType string) (Resource, error) {
-
-	jwtTokenPair := ctx.Value("cerberusTokenPair")
-	if jwtTokenPair == nil {
-		return Resource{}, fmt.Errorf("no token")
-	}
-
-	body := &resourceData{
-		ResourceId:       resourceId,
-		ParentId:         parentId,
-		ResourceTypeName: resourceType,
-	}
-
-	payloadBuf := new(bytes.Buffer)
-	err := json.NewEncoder(payloadBuf).Encode(body)
-	if err != nil {
-		return Resource{}, err
-	}
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("%s/api/resources", c.baseURL),
-		payloadBuf)
-	if err != nil {
-		return Resource{}, err
-	}
-
-	req = req.WithContext(ctx)
-
-	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
-
-	var resource Resource
-	if err := c.sendRequest(req, &resource); err != nil {
-		return Resource{}, err
-	}
-
-	return resource, nil
-}
-
-// CreateUser creates a new User on an Account, which belongs to an App.
-// The User is identified by userId, has a userName which is unique for the Account
-// and a displayName for display.
-// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
-func (c *Client) CreateUser(ctx context.Context, userId, userName, displayName string) (User, error) {
-
-	jwtTokenPair := ctx.Value("cerberusTokenPair")
-	if jwtTokenPair == nil {
-		return User{}, fmt.Errorf("no token")
-	}
-
-	body := &userData{
-		UserId:      userId,
-		UserName:    userName,
-		DisplayName: displayName,
-	}
-
-	payloadBuf := new(bytes.Buffer)
-	err := json.NewEncoder(payloadBuf).Encode(body)
-	if err != nil {
-		return User{}, err
-	}
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("%s/api/users", c.baseURL),
-		payloadBuf)
-	if err != nil {
-		return User{}, err
-	}
-
-	req = req.WithContext(ctx)
-
-	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
-
-	var user User
-	if err := c.sendRequest(req, &user); err != nil {
-		return User{}, err
-	}
-
-	return user, nil
-}
-
-// CreateRole creates a new Role on an Account, which belongs to an App.
-// A Role is identified by a roleId, and has a roleName unique to the Account.
-// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
-func (c *Client) CreateRole(ctx context.Context, roleId, name string) (Role, error) {
-	return c.createRole(ctx, roleId, name, false)
-}
-
-// CreateSuperRole creates a new 'super' Role on an Account, which belongs to an App.
-// A Role is identified by a roleId, and has a roleName unique to the Account.
-// A super Role has access to all resources regardless of permissions. There can only be one super role per Account.
-// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
-func (c *Client) CreateSuperRole(ctx context.Context, roleId, name string) (Role, error) {
-	return c.createRole(ctx, roleId, name, true)
-}
-
-func (c *Client) createRole(ctx context.Context, roleId, name string, isSuperAdmin bool) (Role, error) {
-
-	jwtTokenPair := ctx.Value("cerberusTokenPair")
-	if jwtTokenPair == nil {
-		return Role{}, fmt.Errorf("no token")
-	}
-
-	body := &roleData{
-		RoleId:       roleId,
-		Name:         name,
-		IsSuperAdmin: isSuperAdmin,
-	}
-
-	payloadBuf := new(bytes.Buffer)
-	err := json.NewEncoder(payloadBuf).Encode(body)
-	if err != nil {
-		return Role{}, err
-	}
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("%s/api/roles", c.baseURL),
-		payloadBuf)
-	if err != nil {
-		return Role{}, err
-	}
-
-	req = req.WithContext(ctx)
-
-	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
-
-	var role Role
-	if err := c.sendRequest(req, &role); err != nil {
-		return Role{}, err
-	}
-
-	return role, nil
-}
-
-// AssignRole assigns the User identified by userId to the Role identified by roleId.
-// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
-func (c *Client) AssignRole(ctx context.Context, roleId, userId string) error {
-
-	jwtTokenPair := ctx.Value("cerberusTokenPair")
-	if jwtTokenPair == nil {
-		return fmt.Errorf("no token")
-	}
-
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("%s/api/roles/%s/users/%s", c.baseURL, roleId, userId), nil)
-	if err != nil {
-		return err
-	}
-
-	req = req.WithContext(ctx)
-
-	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
-
-	if err := c.sendRequest(req, nil); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// UnassignRole removes the User identified by userId from the Role identified by roleId.
-// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
-func (c *Client) UnassignRole(ctx context.Context, roleId, userId string) error {
-
-	jwtTokenPair := ctx.Value("cerberusTokenPair")
-	if jwtTokenPair == nil {
-		return fmt.Errorf("no token")
-	}
-
-	req, err := http.NewRequest(
-		"DELETE",
-		fmt.Sprintf("%s/api/roles/%s/users/%s", c.baseURL, roleId, userId), nil)
-	if err != nil {
-		return err
-	}
-
-	req = req.WithContext(ctx)
-
-	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
-
-	if err := c.sendRequest(req, nil); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// CreatePermission grants permission to some permittee (which could be a User, a Role or a machine Client)
-// to the Resource identified by resourceId by granting a list of Policies which specifies which Actions are allowed.
-// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
-func (c *Client) CreatePermission(ctx context.Context, permitteeId, resourceId string, policies []string) error {
-
-	jwtTokenPair := ctx.Value("cerberusTokenPair")
-	if jwtTokenPair == nil {
-		return fmt.Errorf("no token")
-	}
-
-	body := &permissionData{
-		PermitteeId: permitteeId,
-		ResourceId:  resourceId,
-		PolicyNames: policies,
-	}
-
-	payloadBuf := new(bytes.Buffer)
-	err := json.NewEncoder(payloadBuf).Encode(body)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("%s/api/permissions", c.baseURL),
-		payloadBuf)
-	if err != nil {
-		return err
-	}
-
-	req = req.WithContext(ctx)
-
-	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
-
-	if err := c.sendRequest(req, nil); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // GetUsers returns all the Users for an Account.
@@ -834,17 +560,54 @@ func (c *Client) Ping(ctx context.Context) error {
 	return nil
 }
 
-// Execute runs a series of commands in the given order within one transaction.
-// It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'.
-func (c *Client) Execute(ctx context.Context, commands ...Command) error {
+// Execute runs a series of commands in the given order within one transaction
+// in the context of the account and user specified.
+func (c *Client) Execute(accountId, userId string, commands ...Command) error {
 
+	exec := executeCommands{
+		AccountId: accountId,
+		UserId:    userId,
+		Commands:  commands,
+	}
+
+	payloadBuf := new(bytes.Buffer)
+	err := json.NewEncoder(payloadBuf).Encode(exec)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/api/commands", c.baseURL),
+		payloadBuf)
+	if err != nil {
+		return err
+	}
+
+	req.SetBasicAuth(c.apiKey, c.apiSecret)
+
+	if err := c.sendRequest(req, nil); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ExecuteWithCtx runs a series of commands in the given order within one transaction
+// in the context of the account and user specified.
+// It assumes there's a User token in ctx under "cerberusTokenPair"
+func (c *Client) ExecuteWithCtx(ctx context.Context, commands ...Command) error {
 	jwtTokenPair := ctx.Value("cerberusTokenPair")
 	if jwtTokenPair == nil {
 		return fmt.Errorf("no token")
 	}
 
+	exec := executeCommands{
+		Commands: commands,
+	}
+
 	payloadBuf := new(bytes.Buffer)
-	err := json.NewEncoder(payloadBuf).Encode(commands)
+	err := json.NewEncoder(payloadBuf).Encode(exec)
 	if err != nil {
 		return err
 	}
@@ -868,7 +631,7 @@ func (c *Client) Execute(ctx context.Context, commands ...Command) error {
 	return nil
 }
 
-// CreateAccountCmd returns a Command for CreateAccount
+// CreateAccountCmd returns a Command that creates a new Account for an App with accountId as identifier.
 func (c *Client) CreateAccountCmd(accountId string) Command {
 	return Command{
 		CreateAccount: &createAccountCmd{
@@ -877,7 +640,8 @@ func (c *Client) CreateAccountCmd(accountId string) Command {
 	}
 }
 
-// CreateResourceCmd returns a Command for CreateResource
+// CreateResourceCmd returns a Command that creates a new Resource on an Account, which belongs to an App.
+// The resource is identified by resourceId, has an optional parent parentId and is of resourceType.
 func (c *Client) CreateResourceCmd(resourceId, parentId, resourceType string) Command {
 	return Command{
 		CreateResource: &createResourceCmd{
@@ -888,7 +652,9 @@ func (c *Client) CreateResourceCmd(resourceId, parentId, resourceType string) Co
 	}
 }
 
-// CreateUserCmd returns a Command for CreateUser
+// CreateUserCmd returns a Command that creates a new User on an Account, which belongs to an App.
+// The User is identified by userId, has a userName which is unique for the Account
+// and a displayName for display.
 func (c *Client) CreateUserCmd(userId, userName, displayName string) Command {
 	return Command{
 		CreateUser: &createUserCmd{
@@ -899,7 +665,8 @@ func (c *Client) CreateUserCmd(userId, userName, displayName string) Command {
 	}
 }
 
-// CreateRoleCmd returns a Command for CreateRole
+// CreateRoleCmd returns a Command that creates a new Role on an Account, which belongs to an App.
+// A Role is identified by a roleId, and has a roleName unique to the Account.
 func (c *Client) CreateRoleCmd(roleId, name string) Command {
 	return Command{
 		CreateRole: &createRoleCmd{
@@ -910,7 +677,9 @@ func (c *Client) CreateRoleCmd(roleId, name string) Command {
 	}
 }
 
-// CreateSuperRoleCmd returns a Command for CreateSuperRole
+// CreateSuperRoleCmd returns a Command that creates a new 'super' Role on an Account, which belongs to an App.
+// A Role is identified by a roleId, and has a roleName unique to the Account.
+// A super Role has access to all resources regardless of permissions. There can only be one super role per Account.
 func (c *Client) CreateSuperRoleCmd(roleId, name string) Command {
 	return Command{
 		CreateRole: &createRoleCmd{
@@ -921,7 +690,7 @@ func (c *Client) CreateSuperRoleCmd(roleId, name string) Command {
 	}
 }
 
-// AssignRoleCmd returns a Command for AssignRole
+// AssignRoleCmd returns a Command that assigns the User identified by userId to the Role identified by roleId.
 func (c *Client) AssignRoleCmd(roleId, userId string) Command {
 	return Command{
 		AssignRole: &assignRoleCmd{
@@ -931,7 +700,7 @@ func (c *Client) AssignRoleCmd(roleId, userId string) Command {
 	}
 }
 
-// UnassignRoleCmd returns a Command for UnassignRole
+// UnassignRoleCmd returns a Command that removes the User identified by userId from the Role identified by roleId.
 func (c *Client) UnassignRoleCmd(roleId, userId string) Command {
 	return Command{
 		UnassignRole: &unassignRoleCmd{
@@ -941,7 +710,8 @@ func (c *Client) UnassignRoleCmd(roleId, userId string) Command {
 	}
 }
 
-// CreatePermissionCmd returns a Command for CreatePermission
+// CreatePermissionCmd returns a Command that grants permission to some permittee (which could be a User, a Role or a machine Client)
+// to the Resource identified by resourceId by granting a list of Policies which specifies which Actions are allowed.
 func (c *Client) CreatePermissionCmd(permitteeId, resourceId string, policies []string) Command {
 	return Command{
 		CreatePermission: &createPermissionCmd{
