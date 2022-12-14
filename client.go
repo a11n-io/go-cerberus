@@ -134,17 +134,17 @@ type createUserCmd struct {
 	DisplayName string `json:"displayName"`
 }
 type createRoleCmd struct {
-	RoleId       string `json:"roleId"`
+	RoleId       string `json:"roleId,omitempty"`
 	Name         string `json:"roleName"`
 	IsSuperAdmin bool   `json:"isSuperAdmin"`
 }
 type assignRoleCmd struct {
-	RoleId string `json:"roleId"`
-	UserId string `json:"userId"`
+	RoleName string `json:"roleName"`
+	UserId   string `json:"userId"`
 }
 type unassignRoleCmd struct {
-	RoleId string `json:"roleId"`
-	UserId string `json:"userId"`
+	RoleName string `json:"roleName"`
+	UserId   string `json:"userId"`
 }
 type createPermissionCmd struct {
 	PermitteeId string   `json:"permitteeId"`
@@ -173,10 +173,12 @@ type CerberusClient interface {
 	CreateAccountCmd(accountId string) Command
 	CreateResourceCmd(resourceId, parentId, resourceType string) Command
 	CreateUserCmd(userId, userName, displayName string) Command
-	CreateRoleCmd(roleId, roleName string) Command
-	CreateSuperRoleCmd(roleId, roleName string) Command
-	AssignRoleCmd(roleId, userId string) Command
-	UnassignRoleCmd(roleId, userId string) Command
+	CreateRoleCmd(roleName string) Command
+	CreateRoleWithIdCmd(roleId, roleName string) Command
+	CreateSuperRoleCmd(roleName string) Command
+	CreateSuperRoleWithIdCmd(roleId, roleName string) Command
+	AssignRoleCmd(roleName, userId string) Command
+	UnassignRoleCmd(roleName, userId string) Command
 	CreatePermissionCmd(permitteeId, resourceId string, policies []string) Command
 }
 
@@ -666,8 +668,19 @@ func (c *Client) CreateUserCmd(userId, userName, displayName string) Command {
 }
 
 // CreateRoleCmd returns a Command that creates a new Role on an Account, which belongs to an App.
+// A Role is identified by a roleId (which will be auto-generated), and has a roleName unique to the Account.
+func (c *Client) CreateRoleCmd(name string) Command {
+	return Command{
+		CreateRole: &createRoleCmd{
+			Name:         name,
+			IsSuperAdmin: false,
+		},
+	}
+}
+
+// CreateRoleWithIdCmd returns a Command that creates a new Role on an Account, which belongs to an App.
 // A Role is identified by a roleId, and has a roleName unique to the Account.
-func (c *Client) CreateRoleCmd(roleId, name string) Command {
+func (c *Client) CreateRoleWithIdCmd(roleId, name string) Command {
 	return Command{
 		CreateRole: &createRoleCmd{
 			RoleId:       roleId,
@@ -680,7 +693,19 @@ func (c *Client) CreateRoleCmd(roleId, name string) Command {
 // CreateSuperRoleCmd returns a Command that creates a new 'super' Role on an Account, which belongs to an App.
 // A Role is identified by a roleId, and has a roleName unique to the Account.
 // A super Role has access to all resources regardless of permissions. There can only be one super role per Account.
-func (c *Client) CreateSuperRoleCmd(roleId, name string) Command {
+func (c *Client) CreateSuperRoleCmd(name string) Command {
+	return Command{
+		CreateRole: &createRoleCmd{
+			Name:         name,
+			IsSuperAdmin: true,
+		},
+	}
+}
+
+// CreateSuperRoleWithIdCmd returns a Command that creates a new 'super' Role on an Account, which belongs to an App.
+// A Role is identified by a roleId (which will be auto-generated), and has a roleName unique to the Account.
+// A super Role has access to all resources regardless of permissions. There can only be one super role per Account.
+func (c *Client) CreateSuperRoleWithIdCmd(roleId, name string) Command {
 	return Command{
 		CreateRole: &createRoleCmd{
 			RoleId:       roleId,
@@ -690,22 +715,22 @@ func (c *Client) CreateSuperRoleCmd(roleId, name string) Command {
 	}
 }
 
-// AssignRoleCmd returns a Command that assigns the User identified by userId to the Role identified by roleId.
-func (c *Client) AssignRoleCmd(roleId, userId string) Command {
+// AssignRoleCmd returns a Command that assigns the User identified by userId to the Role identified by roleName.
+func (c *Client) AssignRoleCmd(roleName, userId string) Command {
 	return Command{
 		AssignRole: &assignRoleCmd{
-			RoleId: roleId,
-			UserId: userId,
+			RoleName: roleName,
+			UserId:   userId,
 		},
 	}
 }
 
-// UnassignRoleCmd returns a Command that removes the User identified by userId from the Role identified by roleId.
-func (c *Client) UnassignRoleCmd(roleId, userId string) Command {
+// UnassignRoleCmd returns a Command that removes the User identified by userId from the Role identified by roleName.
+func (c *Client) UnassignRoleCmd(roleName, userId string) Command {
 	return Command{
 		UnassignRole: &unassignRoleCmd{
-			RoleId: roleId,
-			UserId: userId,
+			RoleName: roleName,
+			UserId:   userId,
 		},
 	}
 }
