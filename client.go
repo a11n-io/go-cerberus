@@ -296,7 +296,7 @@ func (c *Client) HasAccess(ctx context.Context, resourceId, action string) (bool
 
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/access/resource/%s/action/%s", c.baseURL, resourceId, action), nil)
+		fmt.Sprintf("%s/access/resource/%s/action/%s", c.baseURL, resourceId, action), nil)
 	if err != nil {
 		return false, err
 	}
@@ -324,7 +324,7 @@ func (c *Client) UserHasAccess(ctx context.Context, userId, resourceId, action s
 
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/access/permittee/%s/resource/%s/action/%s", c.baseURL, userId, resourceId, action), nil)
+		fmt.Sprintf("%s/access/permittee/%s/resource/%s/action/%s", c.baseURL, userId, resourceId, action), nil)
 	if err != nil {
 		return false, err
 	}
@@ -349,7 +349,7 @@ func (c *Client) GetUsers(ctx context.Context) ([]User, error) {
 	}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/users", c.baseURL),
+		fmt.Sprintf("%s/users", c.baseURL),
 		nil)
 	if err != nil {
 		return []User{}, err
@@ -376,7 +376,7 @@ func (c *Client) GetRoles(ctx context.Context) ([]Role, error) {
 	}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/roles", c.baseURL),
+		fmt.Sprintf("%s/roles", c.baseURL),
 		nil)
 	if err != nil {
 		return []Role{}, err
@@ -404,7 +404,7 @@ func (c *Client) GetUsersForRole(ctx context.Context, roleId string) ([]User, er
 	}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/users/roles/%s", c.baseURL, roleId),
+		fmt.Sprintf("%s/users/roles/%s", c.baseURL, roleId),
 		nil)
 	if err != nil {
 		return []User{}, err
@@ -432,7 +432,7 @@ func (c *Client) GetRolesForUser(ctx context.Context, userId string) ([]Role, er
 	}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/roles/users/%s", c.baseURL, userId),
+		fmt.Sprintf("%s/roles/users/%s", c.baseURL, userId),
 		nil)
 	if err != nil {
 		return []Role{}, err
@@ -470,7 +470,7 @@ func (c *Client) RunScript(ctx context.Context, script string) error {
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/api/script", c.baseURL),
+		fmt.Sprintf("%s/script", c.baseURL),
 		payloadBuf)
 	if err != nil {
 		return err
@@ -496,7 +496,7 @@ func (c *Client) GetMigrationVersion(ctx context.Context) (MigrationVersion, err
 	}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/api/migrationversion", c.baseURL),
+		fmt.Sprintf("%s/migrationversion", c.baseURL),
 		nil)
 	if err != nil {
 		return MigrationVersion{}, err
@@ -530,7 +530,7 @@ func (c *Client) SetMigrationVersion(ctx context.Context, version MigrationVersi
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/api/migrationversion", c.baseURL),
+		fmt.Sprintf("%s/migrationversion", c.baseURL),
 		payloadBuf)
 	if err != nil {
 		return err
@@ -587,7 +587,7 @@ func (c *Client) Execute(accountId, userId string, commands ...Command) error {
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/api/commands", c.baseURL),
+		fmt.Sprintf("%s/commands", c.baseURL),
 		payloadBuf)
 	if err != nil {
 		return err
@@ -623,7 +623,7 @@ func (c *Client) ExecuteWithCtx(ctx context.Context, commands ...Command) error 
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/api/commands", c.baseURL),
+		fmt.Sprintf("%s/commands", c.baseURL),
 		payloadBuf)
 	if err != nil {
 		return err
