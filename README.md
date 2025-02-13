@@ -32,9 +32,8 @@ NB!! Treat the API secret securely, never use in frontend code, and do not check
 Once you've configured your project with the API key and secret (e.g. in configuration, parameters or environment variables), you can instantiate the client like this:
 
 ```go
-cerberusClient := cerberus.NewClient("https://cerberus.a11n.io", CERBERUS_API_KEY, CERBERUS_API_SECRET)
+cerberusClient := cerberus.NewClient("https://cerberus-api.a11n.io", CERBERUS_API_KEY, CERBERUS_API_SECRET)
 ```
-The URL above can be replaced with a local URL if you've installed Cerberus locally.
 
 Once the client has been instantiated, you can pass it down to your service layer and use it everywhere you need to interact with Cerberus,
 e.g. getting a JWT token, creating resources, roles, users, assigning roles, etc.

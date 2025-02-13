@@ -21,7 +21,7 @@ To create the client you will use the ``cerberus.NewClient(baseUrl, apiKey, apiS
 
 .. code-block:: console
 
-cerberusClient := cerberus.NewClient("https://api_cerberus.a11n.io:80", "YOUR_CERBERUS_API_KEY", "YOUR_CERBERUS_API_SECRET")
+cerberusClient := cerberus.NewClient("https://cerberus-api.a11n.io", "YOUR_CERBERUS_API_KEY", "YOUR_CERBERUS_API_SECRET")
 
-The ``baseUrl`` parameter could be the hosted cloud, or your own installation url.
+The ``baseUrl`` parameter could be the hosted cloud API.
 The ``apiKey`` and ``apiSecret`` parameters are generated on the cerberus dashboard for the app you're developing against.
