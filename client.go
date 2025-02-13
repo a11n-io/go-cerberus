@@ -776,22 +776,21 @@ func (c *Client) sendRequest(req *http.Request, v interface{}) error {
 		return err
 	}
 
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusBadRequest {
-		var errRes errorResponse
+		var errRes string
 		if err = json.NewDecoder(res.Body).Decode(&errRes); err == nil {
-			return errors.New(errRes.Message)
+			return errors.New(errRes)
 		}
 
 		return fmt.Errorf("unknown error, status code: %d", res.StatusCode)
 	}
 
 	if v != nil {
-		fullResponse := successResponse{
-			Data: v,
-		}
-		if err = json.NewDecoder(res.Body).Decode(&fullResponse); err != nil {
+		if err = json.NewDecoder(res.Body).Decode(&v); err != nil {
 			return err
 		}
 	}
