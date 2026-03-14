@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 )
@@ -288,18 +289,21 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (TokenPa
 // It is assumed that the JWT token pair acquired earlier is now in ctx, under the key 'cerberusTokenPair'
 // and that the JWT token is a user token.
 func (c *Client) HasAccess(ctx context.Context, resourceId, action string) (bool, error) {
-
 	jwtTokenPair := ctx.Value("cerberusTokenPair")
+	log.Printf("jwtTokenPair: %v", jwtTokenPair)
 	if jwtTokenPair == nil {
 		return false, fmt.Errorf("no token")
 	}
 
+	url := fmt.Sprintf("%s/access/resource/%s/action/%s", c.baseURL, resourceId, action)
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/access/resource/%s/action/%s", c.baseURL, resourceId, action), nil)
+		url, nil)
 	if err != nil {
 		return false, err
 	}
+
+	log.Printf("req: %s", url)
 
 	req = req.WithContext(ctx)
 
@@ -771,10 +775,13 @@ func (c *Client) sendRequest(req *http.Request, v interface{}) error {
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/json; charset=utf-8")
 
+	log.Printf("sending request: %v", req)
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
+		log.Printf("error sending request: %v", err)
 		return err
 	}
+	log.Printf("got response: %v", res)
 
 	defer func() {
 		_ = res.Body.Close()
