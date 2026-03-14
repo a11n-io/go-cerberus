@@ -798,9 +798,12 @@ func (c *Client) sendRequest(req *http.Request, v interface{}) error {
 
 	if v != nil {
 		if err = json.NewDecoder(res.Body).Decode(&v); err != nil {
+			log.Printf("error decoding response: %v", err)
 			return err
 		}
 	}
+
+	log.Print("decoded response")
 
 	return nil
 }
