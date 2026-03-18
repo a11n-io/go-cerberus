@@ -8,10 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 )
+
+type UsersPagingResult struct {
+	Total int64  `json:"total"`
+	Users []User `json:"page"`
+}
 
 // A User contains information identifying a cerberus user
 // specific to an Account on an App.
@@ -290,20 +294,15 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (TokenPa
 // and that the JWT token is a user token.
 func (c *Client) HasAccess(ctx context.Context, resourceId, action string) (bool, error) {
 	jwtTokenPair := ctx.Value("cerberusTokenPair")
-	log.Printf("jwtTokenPair: %v", jwtTokenPair)
 	if jwtTokenPair == nil {
 		return false, fmt.Errorf("no token")
 	}
 
-	url := fmt.Sprintf("%s/access/resource/%s/action/%s", c.baseURL, resourceId, action)
 	req, err := http.NewRequest(
-		"GET",
-		url, nil)
+		"GET", fmt.Sprintf("%s/access/resource/%s/action/%s", c.baseURL, resourceId, action), nil)
 	if err != nil {
 		return false, err
 	}
-
-	log.Printf("req: %s", url)
 
 	req = req.WithContext(ctx)
 
@@ -363,12 +362,13 @@ func (c *Client) GetUsers(ctx context.Context) ([]User, error) {
 
 	req.Header.Set("Authorization", "Bearer "+jwtTokenPair.(TokenPair).AccessToken)
 
-	var users []User
-	if err := c.sendRequest(req, &users); err != nil {
+	var pagingResult UsersPagingResult
+	// TODO: handle paging either in the client or return the page
+	if err := c.sendRequest(req, &pagingResult); err != nil {
 		return []User{}, err
 	}
 
-	return users, nil
+	return pagingResult.Users, nil
 }
 
 // GetRoles returns all the Roles for an Account.
@@ -775,13 +775,10 @@ func (c *Client) sendRequest(req *http.Request, v interface{}) error {
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/json; charset=utf-8")
 
-	log.Printf("sending request: %v", req)
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
-		log.Printf("error sending request: %v", err)
 		return err
 	}
-	log.Printf("got response: %v", res)
 
 	defer func() {
 		_ = res.Body.Close()
@@ -798,12 +795,9 @@ func (c *Client) sendRequest(req *http.Request, v interface{}) error {
 
 	if v != nil {
 		if err = json.NewDecoder(res.Body).Decode(&v); err != nil {
-			log.Printf("error decoding response: %v", err)
 			return err
 		}
 	}
-
-	log.Print("decoded response")
 
 	return nil
 }
